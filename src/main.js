@@ -57,17 +57,26 @@ function notice(text, values) {
   $("#notice").hidden = !text;
   ui("#notice", text, values);
 }
-function refresh() {
-  $("#file-name").textContent = name;
-  $("#side-name").textContent = name;
-  $("#dirty-dot").style.visibility = dirty ? "visible" : "hidden";
+let draftTimer, statsTimer;
+function refreshStats() {
+  clearTimeout(statsTimer);
   ui("#stats", "{words} words  ·  {lines} lines", {
     words: source.trim().split(/\s+/).filter(Boolean).length,
     lines: source.split("\n").length,
   });
+}
+function refresh() {
+  $("#file-name").textContent = name;
+  $("#side-name").textContent = name;
+  $("#dirty-dot").style.visibility = dirty ? "visible" : "hidden";
+  clearTimeout(statsTimer);
+  if (source.length > 200000) statsTimer = setTimeout(refreshStats, 100);
+  else refreshStats();
   document.title = `${dirty ? "• " : ""}${name} — Inkstone`;
 }
 function backup() {
+  clearTimeout(draftTimer);
+  draftTimer = null;
   try {
     writeDraft(localStorage, source, name);
     ui("#draft-status", "Recovery draft saved locally");
@@ -187,7 +196,11 @@ const editor = new EditorView({
         source = update.state.doc.toString();
         dirty = source !== baseline;
         refresh();
-        backup();
+        clearTimeout(draftTimer);
+        if (source.length > 200000) {
+          ui("#draft-status", "Recovery pending…");
+          draftTimer = setTimeout(backup, 200);
+        } else backup();
         schedule();
       }
     }),
@@ -378,7 +391,14 @@ window.addEventListener("keydown", (e) => {
     open();
   }
 });
+window.addEventListener("pagehide", () => {
+  if (dirty || draftTimer) backup();
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden" && (dirty || draftTimer)) backup();
+});
 window.addEventListener("beforeunload", (e) => {
+  if (dirty || draftTimer) backup();
   if (dirty) {
     e.preventDefault();
     e.returnValue = "";

@@ -1,5 +1,6 @@
 export const LANGUAGE_KEY = "inkstone.language.v1";
 export const zhCN = {
+  "Recovery pending…": "恢复草稿待保存…",
   "Invalid language": "无效的语言选项",
   "Inkstone home": "Inkstone 首页",
   WORKSPACE: "工作区",

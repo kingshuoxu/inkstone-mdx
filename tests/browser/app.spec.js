@@ -184,11 +184,13 @@ for (const repeats of [2200, 22000]) {
       body: JSON.stringify(result),
       contentType: "application/json",
     });
-    expect(
-      await page.evaluate(
-        () => JSON.parse(localStorage.getItem("inkstone.draft.v1")).source,
-      ),
-    ).toBe(source + "a".repeat(20));
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => JSON.parse(localStorage.getItem("inkstone.draft.v1")).source,
+        ),
+      )
+      .toBe(source + "a".repeat(20));
   });
 }
 
@@ -336,4 +338,21 @@ test("oversized open preserves source and recovery quota failure still allows do
   let text = "";
   for await (const chunk of await d.createReadStream()) text += chunk;
   expect(text).toBe("# 配额失败仍可保存");
+});
+
+test("large pending recovery flushes before immediate reload", async ({
+  page,
+}) => {
+  await page.goto("/");
+  page.on("dialog", (d) => d.accept());
+  const source = "# recovered\n\n" + "content ".repeat(30000);
+  await replace(page, source);
+  await page.reload();
+  await expect(page.locator("#notice")).toContainText("Recovered your last");
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("inkstone.draft.v1")).source,
+    ),
+  ).toBe(source);
+  await expect(page.locator("iframe")).toHaveCount(0);
 });

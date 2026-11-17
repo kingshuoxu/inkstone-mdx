@@ -2,7 +2,7 @@
 
 These are conservative implementation guardrails, not MDX format limits or experimentally determined universal thresholds. This revision retains them.
 
-- **Open: 5 MiB (5,242,880 bytes)**. Browser loading reads the whole file; desktop `readDocument` checks size before reading UTF-8. The desktop IPC also caps source sent for save/compile at 5 MiB. This bounds whole-document reads/copies and IPC. Editing rebuilds a string, scans words/lines and serializes a plaintext recovery draft on each change. Browser localStorage quota is independent and may be exhausted below this limit, because browser quota accounting differs from UTF-8 file size. The app warns when recovery fails. Browser downloads can save larger editor buffers; native desktop save rejects a source above its IPC cap. Neither path provides streaming editing.
+- **Open: 5 MiB (5,242,880 bytes)**. Browser loading reads the whole file; desktop `readDocument` checks size before reading UTF-8. The desktop IPC also caps source sent for save/compile at 5 MiB. This bounds whole-document reads/copies and IPC. Editing still rebuilds a string on each change. For buffers over 200,000 JavaScript string units, word/line scans wait 100 ms and draft serialization/storage waits for a 200 ms editing pause. Pending drafts flush on page hide/unload, but sudden process termination can lose a pending draft. Browser localStorage quota is independent and may be exhausted below this limit, because browser quota accounting differs from UTF-8 file size. The app warns when recovery fails. Browser downloads can save larger editor buffers; native desktop save rejects a source above its IPC cap. Neither path provides streaming editing.
 - **Preview source: 512,000 UTF-8 bytes (500 KiB)** in browser and project compilers. This bounds parser work and the input to executable preview, but bytes alone do not bound AST size, React/DOM nodes or arbitrary JS behavior. Browser compilation times out after 5 seconds, project bundling after 15 seconds; running preview JS has no time/memory budget. Even a small trusted document can be expensive.
 - **Project output: 10 MiB**; preview IPC accepts at most 12 MiB of HTML string. These are additional guards, not promises that every bundle below them runs smoothly.
 
@@ -27,7 +27,7 @@ Cloud Linux, Node 24.22.1, Intel Xeon Platinum 8573C:
 
 RSS includes the entire Node process and compiler dependencies. It is not compiler-only allocation. These samples exclude browser input, DOM/React rendering, localStorage, Electron IPC, and preview JavaScript execution. They do not establish a hard performance boundary. Actual byte counts are slightly lower because fixtures use complete repeated units.
 
-A separate five-sample Node probe of JSON draft serialization plus word/line scans took 3.5–6.9 ms for 1 MiB, 9.2–80.9 ms for 5 MiB, and 15.4–27.3 ms for 10 MiB. These noisy figures exclude CodeMirror and synchronous localStorage writes and cannot justify raising the editor limit. The existing browser input test covers 105.6 KB with preview paused, not multi-megabyte editing.
+A separate five-sample Node probe of JSON draft serialization plus word/line scans took 3.5–6.9 ms for 1 MiB, 9.2–80.9 ms for 5 MiB, and 15.4–27.3 ms for 10 MiB. These noisy figures exclude CodeMirror and synchronous localStorage writes and cannot justify raising the editor limit. The browser input tests cover 105.6 KB and 1,056 KB with preview paused, not arbitrary multi-megabyte or executing documents.
 
 ## Decision
 
