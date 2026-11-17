@@ -1,6 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+export function checkedSource(source) {
+  if (typeof source !== "string" || Buffer.byteLength(source) > 5 * 1024 * 1024)
+    throw Error("Invalid source or document exceeds 5 MiB.");
+  return source;
+}
 export function isInside(root, file) {
   const rel = path.relative(root, file);
   return (

@@ -12,7 +12,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { Worker } from "node:worker_threads";
-import { atomicSave, readDocument, checkedPath, isInside } from "./files.mjs";
+import {
+  atomicSave,
+  readDocument,
+  checkedPath,
+  isInside,
+  checkedSource,
+} from "./files.mjs";
 import { normalizeLanguage, translate, translateError } from "../src/i18n.js";
 let language = "en";
 const t = (key) => translate(language, key);
@@ -92,11 +98,6 @@ function cancelCompile() {
   compiling?.terminate();
   compiling = null;
   preview = null;
-}
-function checkedSource(source) {
-  if (typeof source !== "string" || Buffer.byteLength(source) > 5 * 1024 * 1024)
-    throw Error("Invalid source or document exceeds 5 MiB.");
-  return source;
 }
 function register(name, fn) {
   ipcMain.handle(name, async (event, ...args) => {

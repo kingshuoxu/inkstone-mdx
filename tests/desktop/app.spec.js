@@ -243,6 +243,52 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
     await expect(
       page.getByRole("textbox", { name: "MDX source editor" }),
     ).toContainText("中文保存验证");
+    // Exercise the actual preload/main-process save boundary, without rendering a 5 MiB preview.
+    await page.evaluate(async () => {
+      await window.inkstoneDesktop.open();
+    });
+    const capped = "x".repeat(5 * 1024 * 1024);
+    await page.evaluate(
+      (source) => window.inkstoneDesktop.save(source, false),
+      capped,
+    );
+    expect((await fs.stat(file)).size).toBe(5 * 1024 * 1024);
+    await app.evaluate(({ dialog }, file) => {
+      globalThis.saveDialogCount = 0;
+      dialog.showSaveDialog = async () => {
+        globalThis.saveDialogCount++;
+        return {
+          canceled: false,
+          filePath: file.replace(/index\.mdx$/, "boundary-copy.mdx"),
+        };
+      };
+    }, file);
+    await page.evaluate(
+      (source) => window.inkstoneDesktop.save(source, true),
+      capped,
+    );
+    expect((await fs.stat(path.join(project, "boundary-copy.mdx"))).size).toBe(
+      5 * 1024 * 1024,
+    );
+    for (const copy of [false, true]) {
+      const error = await page.evaluate(
+        async ({ source, copy }) => {
+          try {
+            await window.inkstoneDesktop.save(source, copy);
+            return "";
+          } catch (e) {
+            return e.message;
+          }
+        },
+        { source: capped + "x", copy },
+      );
+      expect(error).toContain("5 MiB");
+    }
+    expect(await app.evaluate(() => globalThis.saveDialogCount)).toBe(1);
+    expect((await fs.stat(file)).size).toBe(5 * 1024 * 1024);
+    expect((await fs.stat(path.join(project, "boundary-copy.mdx"))).size).toBe(
+      5 * 1024 * 1024,
+    );
   } finally {
     await app.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows().forEach((w) => w.destroy()),
