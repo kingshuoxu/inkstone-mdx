@@ -1,5 +1,6 @@
 export const LANGUAGE_KEY = "inkstone.language.v1";
 export const zhCN = {
+  "Invalid language": "无效的语言选项",
   "Inkstone home": "Inkstone 首页",
   WORKSPACE: "工作区",
   Workspace: "工作区",
@@ -28,7 +29,7 @@ export const zhCN = {
   "Markdown meets components.": "让 Markdown 遇见组件。",
   "Use Markdown, GFM tables, JSX, and JavaScript expressions. Built-in components require no imports:":
     "支持 Markdown、GFM 表格、JSX 和 JavaScript 表达式。内置组件无需导入：",
-  "Imports and exports are unsupported. Preview resets component state after each compile. Remote assets are blocked; data images work.":
+  "Browser mode rejects imports and exports. Desktop mode supports local components and installed browser-compatible dependencies after workspace trust. Preview resets component state after each compile. Remote assets are blocked; data images work.":
     "网页版不支持 import/export。桌面版信任工作区后支持本地组件和已安装的浏览器兼容依赖。每次编译会重置组件状态；远程资源被阻止，可使用 data 图片。",
   "The preview has an opaque origin with no file handles or app bridge. Executable MDX can still hang its browser tab or navigate its own frame: only run code you trust. Pause stops previews while you edit.":
     "预览使用不透明来源，无法访问文件句柄或应用接口。MDX 中的代码仍可能使页面卡死或导航自己的框架，请只运行可信代码。编辑时可暂停预览。",
@@ -161,6 +162,15 @@ export const zhCN = {
   "Show all": "显示全部",
 };
 export const editorPhrases = {
+  Completions: "补全建议",
+  "Unfolded lines": "已展开的行",
+  "folded code": "已折叠代码",
+  unfold: "展开",
+  "replaced match on line $": "已替换第 $ 行的匹配项",
+  "replaced $ matches": "已替换 $ 个匹配项",
+  "current match": "当前匹配项",
+  "on line": "位于行",
+  "Control character": "控制字符",
   Find: "查找",
   Replace: "替换",
   next: "下一个",
@@ -198,19 +208,24 @@ export function translate(language, key, values = {}) {
     String(values[name] ?? all),
   );
 }
+const diagnosticPairs = Object.entries(zhCN).filter(
+  ([en]) => !en.includes("{") && en.length > 20,
+);
+const englishDiagnostics = [...diagnosticPairs].sort(
+  (a, b) => b[0].length - a[0].length,
+);
+const chineseDiagnostics = [...diagnosticPairs].sort(
+  (a, b) => b[1].length - a[1].length,
+);
 // App-owned messages are translated; third-party compiler/OS diagnostics are retained verbatim.
 export function translateError(language, error) {
   let text = String(error);
+  if (language === "zh-CN" && zhCN[text]) return zhCN[text];
   if (language !== "zh-CN") {
-    for (const [en, zh] of Object.entries(zhCN)
-      .filter(([en]) => !en.includes("{") && en.length > 20)
-      .sort((a, b) => b[1].length - a[1].length))
-      text = text.replaceAll(zh, en);
+    for (const [en, zh] of chineseDiagnostics) text = text.replaceAll(zh, en);
     return text;
   }
-  for (const [en, zh] of Object.entries(zhCN)
-    .filter(([en]) => !en.includes("{"))
-    .sort((a, b) => b[0].length - a[0].length)) {
+  for (const [en, zh] of englishDiagnostics) {
     if (en.length > 20) text = text.replaceAll(en, zh);
   }
   return text;

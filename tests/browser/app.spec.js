@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 async function replace(page, source) {
-  const editor = page.getByRole("textbox", { name: "MDX source editor" });
+  const editor = page.locator("#editor .cm-content");
   await editor.click();
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.insertText(source);
@@ -218,8 +218,17 @@ test("Chinese UI switches live, preserves source and undo, and persists after re
   await page.goto("/");
   page.on("dialog", (d) => d.accept());
   await replace(page, "# 中文文档\n\n<Badge>中文标签</Badge>\n\n<Counter />");
+  await page.getByRole("textbox", { name: "MDX source editor" }).click();
+  await page.keyboard.press("ControlOrMeta+f");
+  await expect(
+    page.getByRole("textbox", { name: "Find", exact: true }),
+  ).toBeVisible();
   await page.locator("#language").selectOption("zh-CN");
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  await expect(
+    page.getByRole("textbox", { name: "查找", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "关闭", exact: true }).click();
   await expect(
     page.getByRole("textbox", { name: "MDX 源码编辑器" }),
   ).toContainText("中文文档");
@@ -245,6 +254,9 @@ test("Chinese UI switches live, preserves source and undo, and persists after re
   await expect(
     page.getByRole("textbox", { name: "MDX source editor" }),
   ).not.toContainText("新增文字");
+  await expect(
+    page.getByRole("textbox", { name: "MDX source editor" }),
+  ).toContainText("中文文档");
   await page.locator("#language").selectOption("zh-CN");
   await page.reload();
   await expect(page.locator("#language")).toHaveValue("zh-CN");

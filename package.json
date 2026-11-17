@@ -26,7 +26,8 @@
     "react-dom": "^19.2.0",
     "remark-gfm": "^4.0.1",
     "esbuild": "^0.25.12",
-    "@codemirror/state": "^6.7.0"
+    "@codemirror/state": "^6.7.0",
+    "@codemirror/search": "^6.6.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
