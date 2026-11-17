@@ -19,13 +19,26 @@ for (const size of [10000, 100000])
           );
         });
     });
+    await page
+      .locator("#file-input")
+      .setInputFiles({
+        name: "benchmark.mdx",
+        mimeType: "text/plain",
+        buffer: Buffer.from(source + "\n\nMARKER0"),
+      });
+    await expect(page.locator("iframe")).toHaveCount(0);
     const times = [];
     let engine;
     for (let i = 0; i < 4; i++) {
-      await editor.focus();
-      await page.keyboard.press("ControlOrMeta+a");
       const start = performance.now();
-      await page.keyboard.insertText(source + "\n\nMARKER" + i);
+      if (i === 0)
+        await page.getByRole("button", { name: "Run preview" }).click();
+      else {
+        await editor.focus();
+        await page.keyboard.press("ControlOrMeta+End");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.insertText(String(i));
+      }
       await expect(
         page.frameLocator("iframe").getByText("MARKER" + i, { exact: true }),
       ).toBeVisible({ timeout: 15000 });
@@ -57,8 +70,8 @@ for (const size of [10000, 100000])
       version: info.project.name,
       bytes: Buffer.byteLength(source),
       engine,
-      coldInputToPreviewMs: times[0],
-      warmInputToPreviewMs: times.slice(1),
+      firstRunToPreviewMs: times[0],
+      editToPreviewMs: times.slice(1),
       typingMedianMs: input[5],
       typingP95Ms: input[9],
       pageJSHeapBytes: metrics.metrics.find((m) => m.name === "JSHeapUsedSize")

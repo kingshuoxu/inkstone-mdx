@@ -408,3 +408,27 @@ test("Rust chunk failure falls back without losing source or preview", async ({
     )
     .toBe(source);
 });
+
+test("100 KB native clipboard paste preserves complete source", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  const source =
+    "# Heading\n\n**bold** and {1+2}\n\n<Badge>中文</Badge>\n\n".repeat(1850);
+  await page.evaluate((text) => navigator.clipboard.writeText(text), source);
+  await page.locator(".cm-content").focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+v");
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () => JSON.parse(localStorage.getItem("inkstone.draft.v1")).source,
+        ),
+      { timeout: 15000 },
+    )
+    .toBe(source);
+});
