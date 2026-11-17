@@ -12,13 +12,11 @@ for (const kind of ["plain", "rich"])
     const source = unit.repeat(
       Math.floor((5 * 1024 * 1024 - 4096) / unit.length),
     );
-    await page
-      .locator("#file-input")
-      .setInputFiles({
-        name: "compare.mdx",
-        mimeType: "text/plain",
-        buffer: Buffer.from(source),
-      });
+    await page.locator("#file-input").setInputFiles({
+      name: "compare.mdx",
+      mimeType: "text/plain",
+      buffer: Buffer.from(source),
+    });
     await expect(page.locator("#file-name")).toHaveText("compare.mdx");
     const editor = page.locator(".cm-content");
     await editor.focus();
