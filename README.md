@@ -6,7 +6,7 @@
 
 [English](README.en.md) · [MIT License](LICENSE) · [桌面版指南](docs/DESKTOP.md) · [测试与限制](docs/EXTENDED-VALIDATION.md)
 
-> **开发预览版**：本页描述 `feat/rust-mdx-core` 分支的功能，代码位于 [Draft PR #3](https://github.com/kingshuoxu/inkstone-mdx/pull/3)，尚未合并到 `main` 或正式发布。桌面测试包未签名，macOS 未公证。请只运行可信的 MDX 文档与项目。
+> **开发预览版**：本页描述 `main` 分支的功能；[PR #3](https://github.com/kingshuoxu/inkstone-mdx/pull/3) 已合并，尚未正式发布。桌面测试包未签名，macOS 未公证。请只运行可信的 MDX 文档与项目。
 
 ![Inkstone MDX：源码与 React 实时预览并排显示](docs/screenshots/workspace-production.png)
 
@@ -66,10 +66,10 @@ Rust 编译器的收益是另一项独立测量：在已记录的 Linux / Node 2
 
 ### 从源码启动
 
-需要 Node.js **22.12+**（CI 使用 Node 24）、npm、稳定版 Rust 工具链及系统构建工具。当前功能尚未进入主分支，先检出对应分支：
+需要 Node.js **22.12+**（CI 使用 Node 24）、npm、稳定版 Rust 工具链及系统构建工具。从默认主分支获取源码：
 
 ```sh
-git clone --branch feat/rust-mdx-core https://github.com/kingshuoxu/inkstone-mdx.git
+git clone https://github.com/kingshuoxu/inkstone-mdx.git
 cd inkstone-mdx
 rustup target add wasm32-unknown-unknown
 cargo install wasm-bindgen-cli --version 0.2.105 --locked
