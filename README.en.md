@@ -8,6 +8,10 @@ A local-first, source-first MDX editor. Write Markdown and React components in a
 
 > **Development preview:** this README describes `main`; [PR #3](https://github.com/kingshuoxu/inkstone-mdx/pull/3) has been merged, but no formal release has been published. Desktop packages are unsigned and macOS builds are not notarized. Only run trusted documents and projects.
 
+## Live preview
+
+The normal working view below has preview enabled: source on the left, the rendered document and interactive React components on the right.
+
 ![Source editing alongside a live React preview](docs/screenshots/workspace-production.png)
 
 ## What it does
@@ -21,11 +25,24 @@ A local-first, source-first MDX editor. Write Markdown and React components in a
 - **Large files keep their colors:** above one million UTF-16 units, a background worker incrementally parses the document and returns only visible-range styling. Input does not wait for full-document highlighting.
 - **Local-first:** no account, backend, paid service, app telemetry or document upload. Recovery drafts stay in the local browser/app profile and are not a durable backup.
 
+### Chinese interface with preview enabled
+
 ![Simplified Chinese interface](docs/screenshots/chinese-production.png)
 
-![Highlighting remains visible near the end of a roughly 5 MiB document](docs/screenshots/highlight-production.png)
+### Large-file editing test, not a preview demo
 
-These are real Chromium screenshots of production build `4d269a4`, not mockups. The large-file screenshot has preview paused and shows a real recovery-quota warning: disk saving and local draft recovery are separate. [Screenshot provenance](docs/screenshots/README.md).
+> **Editing performance is not preview capacity.** The roughly 5 MiB fixture below exceeds the current **512,000 UTF-8 byte** preview limit. It tests editing and highlighting only. Preview was paused, so the right pane is empty; clicking “Run preview” cannot bypass the size limit. See the two screenshots above for normal rendered previews.
+
+<details>
+<summary>Show the large-file highlighting stress test (preview paused)</summary>
+
+![Worker highlighting in a roughly 5 MiB file only; preview is paused and the right pane is empty](docs/screenshots/highlight-production.png)
+
+The storage warning means the fixture exceeded the browser's recovery-draft quota, not that saving a file to disk failed. Save valuable work to disk.
+
+</details>
+
+These are real Chromium screenshots of production build `4d269a4`, not mockups. [Screenshot provenance](docs/screenshots/README.md).
 
 ## Measured performance
 

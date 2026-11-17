@@ -8,6 +8,10 @@
 
 > **开发预览版**：本页描述 `main` 分支的功能；[PR #3](https://github.com/kingshuoxu/inkstone-mdx/pull/3) 已合并，尚未正式发布。桌面测试包未签名，macOS 未公证。请只运行可信的 MDX 文档与项目。
 
+## 页面预览
+
+下面是正常开启预览的实际界面：左侧编辑源码，右侧显示文档和可交互的 React 组件。
+
 ![Inkstone MDX：源码与 React 实时预览并排显示](docs/screenshots/workspace-production.png)
 
 ## 功能与特点
@@ -25,11 +29,20 @@
 
 ![简体中文界面与中文文档预览](docs/screenshots/chinese-production.png)
 
-### 大文件高亮
+### 大文件编辑测试（不是预览效果图）
 
-![约 5 MiB 文档滚动至末尾后仍保留标题、强调和链接高亮](docs/screenshots/highlight-production.png)
+> **编辑性能与预览能力是两回事。** 下面的约 5 MiB 测试文档超过当前 **512,000 UTF-8 字节**预览上限，只用于验证编辑和高亮。测试中预览处于暂停状态，因此右侧为空；点击「Run preview」也不能绕过大小限制。正常预览效果请看上方两张截图。
 
-以上是 `4d269a4` 生产构建在 Chromium 中的真实运行截图，不是设计稿。大文件截图暂停了预览；顶部提示反映该测试文档超出浏览器草稿存储容量，文件保存与草稿恢复是两回事。截图来源与校验值见 [截图说明](docs/screenshots/README.md)。
+<details>
+<summary>展开大文件高亮压力测试截图（预览已暂停）</summary>
+
+![仅展示约 5 MiB 文档的后台语法高亮；预览暂停，右侧为空](docs/screenshots/highlight-production.png)
+
+顶部存储提示说明该测试文档超出了浏览器草稿容量；这不代表磁盘文件保存失败。请主动保存文件。
+
+</details>
+
+以上是 `4d269a4` 生产构建在 Chromium 中的真实运行截图，不是设计稿。截图来源与校验值见 [截图说明](docs/screenshots/README.md)。
 
 ## 性能：保留高亮，而不是牺牲高亮
 
