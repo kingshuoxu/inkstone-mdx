@@ -6,7 +6,7 @@ A local-first, source-first MDX editor. Write Markdown and React components in a
 
 [简体中文](README.md) · [MIT License](LICENSE) · [Desktop guide](docs/DESKTOP.md) · [Validation](docs/EXTENDED-VALIDATION.md)
 
-> **Development preview:** this README describes `main`; [PR #3](https://github.com/kingshuoxu/inkstone-mdx/pull/3) has been merged, but no formal release has been published. Desktop packages are unsigned and macOS builds are not notarized. Only run trusted documents and projects.
+> **Development preview:** this README describes the full large-file preview branch in [PR #4](https://github.com/kingshuoxu/inkstone-mdx/pull/4), not yet merged or formally released. Desktop packages are unsigned and macOS builds are not notarized. Only run trusted documents and projects.
 
 ## Live preview
 

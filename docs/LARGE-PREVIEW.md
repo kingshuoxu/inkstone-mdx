@@ -5,7 +5,7 @@ This change compiles the entire MDX document up to the existing 5 MiB file limit
 ## Execution and limits
 
 - Explicit document/project trust is unchanged. MDX is executable JavaScript.
-- Source compilation runs off the editor thread. Large-file edits are batched until a 1.5-second quiet period; at most one compilation runs, followed by only the latest pending revision. Obsolete results are never displayed. Pausing or opening a different file cancels work immediately.
+- Source compilation runs off the editor thread. Large standalone compiler workers are released after each result so their peak WASM linear memory is not retained while the full preview renders. Obsolete results are never displayed. Pausing or opening a different file cancels work immediately.
 - The last successful preview stays visible while a replacement compiles and renders. The status distinguishes compilation from full React-tree readiness.
 - Large previews use CSS content-visibility to defer offscreen layout, not component execution or DOM creation. The entire document remains present; large React trees still consume memory.
 - Standalone source above 512,000 bytes gets a 120-second compile budget, smaller inputs 5 seconds. Project compilation gets 120 seconds. A new render reports readiness within 60 seconds or is rejected.

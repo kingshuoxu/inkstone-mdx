@@ -292,6 +292,7 @@ async function run() {
     return;
   }
   const active = worker;
+  const releaseAfterCompile = previewBytes(source) > LARGE_PREVIEW_BYTES;
   workerBusy = true;
   timeout = setTimeout(() => {
     if (active !== worker || activeCompileId !== id) return;
@@ -303,7 +304,14 @@ async function run() {
     );
   }, previewTimeout(source));
   active.onmessage = ({ data }) => {
-    if (active !== worker || !finishCompile(data.id)) return;
+    if (active !== worker || activeCompileId !== data.id) return;
+    if (releaseAfterCompile) {
+      // WASM linear memory does not shrink after freeing a large syntax tree.
+      // Release this worker before constructing the full React/DOM preview.
+      active.terminate();
+      worker = null;
+    }
+    if (!finishCompile(data.id)) return;
     $("#compile-status").dataset.engine = data.engine || "error";
     if (data.error) {
       showError(data.error);
