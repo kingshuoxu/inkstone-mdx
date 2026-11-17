@@ -19,13 +19,11 @@ for (const size of [10000, 100000])
           );
         });
     });
-    await page
-      .locator("#file-input")
-      .setInputFiles({
-        name: "benchmark.mdx",
-        mimeType: "text/plain",
-        buffer: Buffer.from(source + "\n\nMARKER0"),
-      });
+    await page.locator("#file-input").setInputFiles({
+      name: "benchmark.mdx",
+      mimeType: "text/plain",
+      buffer: Buffer.from(source + "\n\nMARKER0"),
+    });
     await expect(page.locator("iframe")).toHaveCount(0);
     const times = [];
     let engine;
