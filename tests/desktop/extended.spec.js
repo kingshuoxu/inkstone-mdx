@@ -110,7 +110,9 @@ test("real Linux IBus libpinyin system IME via X11 keys", async () => {
     await page.locator(".cm-content").click();
     await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.press("Backspace");
-    execFileSync("ibus", ["engine", "libpinyin"]);
+    expect(execFileSync("ibus", ["engine"], { encoding: "utf8" }).trim()).toBe(
+      "libpinyin",
+    );
     execFileSync("xdotool", [
       "type",
       "--clearmodifiers",

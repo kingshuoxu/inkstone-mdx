@@ -1,5 +1,6 @@
 export const LANGUAGE_KEY = "inkstone.language.v1";
 export const zhCN = {
+  "Large file · syntax highlighting paused": "大文件模式 · 已暂停语法高亮",
   "File is not valid UTF-8. Source was not replaced.":
     "文件不是有效的 UTF-8 编码，当前源码未被替换。",
   "Recovery pending…": "恢复草稿待保存…",

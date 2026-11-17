@@ -11,6 +11,14 @@ export async function rustCompile(source, program = false) {
   }
   return bindings.compile_mdx(source, program);
 }
+// Conservative linear scans: avoid nested backtracking on hostile long lines.
+export function needsReference(source) {
+  if (source.includes("[^")) return true;
+  if (source.includes("&") && /https?:\/\/|www\./.test(source)) return true;
+  return source
+    .split(/\r\n|\r|\n/)
+    .some((line) => line.includes(":") && /^[ \t|:-]+$/.test(line));
+}
 export async function compileWithEngine(
   source,
   { program = false, engine = "auto" } = {},
@@ -22,9 +30,7 @@ export async function compileWithEngine(
   if (
     engine !== "javascript" &&
     (engine === "rust" || source.length > 16000) &&
-    !source.includes("[^") &&
-    !/(?:https?:\/\/|www\.)[^\s<>]*&/.test(source) &&
-    !/^[ \t|:-]*:[ \t|:-]*$/m.test(source) &&
+    !needsReference(source) &&
     !unavailable
   ) {
     try {

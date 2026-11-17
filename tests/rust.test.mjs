@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import React from "react";
 import * as runtime from "react/jsx-runtime";
 import { renderToStaticMarkup } from "react-dom/server";
-import { compileWithEngine } from "../src/compiler.js";
+import { compileWithEngine, needsReference } from "../src/compiler.js";
 import { transform } from "esbuild";
 const components = {
   Badge: ({ children }) => React.createElement("b", null, children),
@@ -158,4 +158,13 @@ test("malformed large JSX/ESM retains reference diagnostic and next valid compil
     (await compileWithEngine("# Works\n\n" + "text ".repeat(4000))).engine,
     "rust",
   );
+});
+
+test("compatibility routing handles near-limit adversarial long lines", () => {
+  const start = performance.now();
+  assert.equal(needsReference(":".repeat(500000) + "x"), false);
+  assert.equal(needsReference("www.".repeat(125000)), false);
+  assert.equal(needsReference("www.example.com?q=a&b=c"), true);
+  assert.equal(needsReference("| :-- | --: |"), true);
+  console.log("COMPATIBILITY_SCAN_MS", performance.now() - start);
 });

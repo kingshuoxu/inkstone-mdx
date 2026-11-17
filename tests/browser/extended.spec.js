@@ -32,6 +32,7 @@ for (const unicode of [false, true])
     });
     await expect(page.locator("#file-name")).toHaveText("large.mdx");
     await expect(page.locator("iframe")).toHaveCount(0);
+    await expect(page.locator("#syntax-status")).toBeVisible();
     const editor = page.locator(".cm-content");
     await editor.focus();
     await page.keyboard.press("ControlOrMeta+End");
@@ -54,6 +55,7 @@ for (const unicode of [false, true])
     }
     const expected = source + "中".repeat(20);
     expect(hash(await downloaded(page))).toBe(hash(expected));
+    await expect(page.locator("#draft-status")).not.toContainText("pending");
     const recovery = await page.evaluate(() => {
       try {
         return JSON.parse(localStorage.getItem("inkstone.draft.v1")).source;
@@ -164,6 +166,10 @@ test("Chromium IME composition protocol: candidate updates, commit, cancel and u
 test("BOM and CRLF survive edits; invalid UTF-8 cannot replace the document", async ({
   page,
 }) => {
+  await page.addInitScript(() => {
+    delete window.showOpenFilePicker;
+    delete window.showSaveFilePicker;
+  });
   await page.goto("/");
   const original = "\uFEFF# 中文\r\n\r\nKeep me\r\n";
   await page.locator("#file-input").setInputFiles({
@@ -182,4 +188,22 @@ test("BOM and CRLF survive edits; invalid UTF-8 cannot replace the document", as
   });
   await expect(page.locator("#notice")).toContainText("not valid UTF-8");
   expect(await downloaded(page)).toBe(original + "new");
+});
+
+test("large-file syntax mode restores after shrinking and undo", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator("#file-input").setInputFiles({
+    name: "mode.mdx",
+    mimeType: "text/plain",
+    buffer: Buffer.from("a".repeat(1000001)),
+  });
+  await expect(page.locator("#syntax-status")).toBeVisible();
+  await page.locator(".cm-content").focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.insertText("# 中文");
+  await expect(page.locator("#syntax-status")).toBeHidden();
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(page.locator("#syntax-status")).toBeVisible();
 });
