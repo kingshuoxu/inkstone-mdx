@@ -32,9 +32,9 @@ test("large file retains theme, fence context, scrolling, edits and mode switchi
     "font-weight",
     "700",
   );
-  await expect(page.locator(colored).filter({ hasText: "strike" })).toHaveCSS(
-    "text-decoration-line",
-    "line-through",
+  await expect(page.locator(colored).filter({ hasText: "italic" })).toHaveCSS(
+    "font-style",
+    "italic",
   );
   const editor = page.locator(".cm-content");
   await editor.focus();
