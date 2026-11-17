@@ -42,6 +42,7 @@ let source = draft?.source ?? sample,
   handle = null,
   busy = false,
   worker,
+  workerBusy = false,
   timer,
   timeout,
   revision = 0;
@@ -102,7 +103,15 @@ function pauseUntrustedPreview() {
 }
 function schedule() {
   clearTimeout(timer);
-  worker?.terminate();
+  if (
+    workerBusy ||
+    paused ||
+    import.meta.env.VITE_COMPILER_ENGINE === "javascript"
+  ) {
+    worker?.terminate();
+    worker = null;
+    workerBusy = false;
+  }
   clearTimeout(timeout);
   revision++;
   if (paused) return;
@@ -140,12 +149,15 @@ async function run() {
     }
     return;
   }
-  worker = new Worker(new URL("./worker.js", import.meta.url), {
+  worker ||= new Worker(new URL("./worker.js", import.meta.url), {
     type: "module",
   });
   const active = worker;
+  workerBusy = true;
   timeout = setTimeout(() => {
     active.terminate();
+    worker = null;
+    workerBusy = false;
     showError(
       "Compilation timed out. Source is safe; shorten the document or pause preview.",
     );
@@ -153,7 +165,8 @@ async function run() {
   active.onmessage = ({ data }) => {
     if (data.id !== revision) return;
     clearTimeout(timeout);
-    active.terminate();
+    workerBusy = false;
+    $("#compile-status").dataset.engine = data.engine || "error";
     if (data.error) {
       showError(data.error);
       return;
@@ -169,6 +182,8 @@ async function run() {
   active.onerror = () => {
     clearTimeout(timeout);
     active.terminate();
+    worker = null;
+    workerBusy = false;
     showError("Compiler failed. Edit to retry; source is safe.");
   };
   active.postMessage({ id, source });

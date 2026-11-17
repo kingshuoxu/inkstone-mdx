@@ -1,1 +1,4 @@
 src/runtime.generated.txt
+
+src/core.generated.js
+core/

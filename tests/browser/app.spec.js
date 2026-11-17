@@ -383,3 +383,22 @@ test("identical queued recovery flush is not a false cross-tab conflict", async 
   );
   await expect(page.locator("#notice")).toContainText("Another tab");
 });
+
+test("Rust chunk failure falls back without losing source or preview", async ({
+  page,
+}) => {
+  await page.route(/core\.generated/, (route) => route.abort());
+  await page.goto("/");
+  const source = "# Fallback preserved\n\n" + "plain text ".repeat(2000);
+  await replace(page, source);
+  await expect(
+    page
+      .frameLocator("iframe")
+      .getByRole("heading", { name: "Fallback preserved" }),
+  ).toBeVisible();
+  await expect(page.locator("#compile-status")).toHaveAttribute(
+    "data-engine",
+    "javascript",
+  );
+  await expect(page.locator(".cm-content")).toContainText("Fallback preserved");
+});

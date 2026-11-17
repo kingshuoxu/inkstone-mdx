@@ -5,6 +5,7 @@ import { defineConfig } from "vite";
 // condition. Compilation runs in a Worker, where document does not exist.
 // Resolve the package's DOM-free default entry in both dev and worker builds.
 export default defineConfig({
+  worker: { format: "es" },
   resolve: {
     alias: [
       {

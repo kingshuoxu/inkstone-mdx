@@ -3,8 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { build } from "esbuild";
-import { compile } from "@mdx-js/mdx";
-import remarkGfm from "remark-gfm";
+import { compileWithEngine } from "../src/compiler.js";
 import { checkedPath, isInside } from "./files.mjs";
 const require = createRequire(import.meta.url);
 const shared = fileURLToPath(
@@ -19,6 +18,12 @@ export async function bundleProject({ root, file, source }) {
   if (Buffer.byteLength(source) > 512000)
     throw Error("Project preview limit is 500 KB. Source can still be saved.");
   const start = performance.now();
+  const engines = new Set();
+  async function compileDocument(text) {
+    const result = await compileWithEngine(text, { program: true });
+    engines.add(result.engine);
+    return result.code;
+  }
   const result = await build({
     stdin: {
       contents: `import React from 'react';import {createRoot} from 'react-dom/client';import {components,Boundary,installErrorReporting} from ${JSON.stringify(shared)};import MDX from 'inkstone:document';installErrorReporting();createRoot(document.getElementById('root')).render(React.createElement(Boundary,null,React.createElement(MDX,{components})));`,
@@ -55,12 +60,7 @@ export async function bundleProject({ root, file, source }) {
             namespace: "document",
           }));
           b.onLoad({ filter: /.*/, namespace: "document" }, async () => ({
-            contents: String(
-              await compile(source, {
-                remarkPlugins: [remarkGfm],
-                development: false,
-              }),
-            ),
+            contents: await compileDocument(source),
             loader: "js",
             resolveDir: path.dirname(file),
           }));
@@ -98,11 +98,8 @@ export async function bundleProject({ root, file, source }) {
             return { path: real };
           });
           b.onLoad({ filter: /\.mdx?$/ }, async (args) => ({
-            contents: String(
-              await compile(await fs.readFile(args.path, "utf8"), {
-                remarkPlugins: [remarkGfm],
-                development: false,
-              }),
+            contents: await compileDocument(
+              await fs.readFile(args.path, "utf8"),
             ),
             loader: "js",
             resolveDir: path.dirname(args.path),
@@ -122,5 +119,6 @@ export async function bundleProject({ root, file, source }) {
     css,
     ms: performance.now() - start,
     modules: Object.keys(result.metafile.inputs).length,
+    engines: [...engines],
   };
 }

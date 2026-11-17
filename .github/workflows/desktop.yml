@@ -18,7 +18,16 @@ jobs:
       - name: Install Chinese system font fallback (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+      - run: cargo install wasm-bindgen-cli --version 0.2.105 --locked
       - run: npm ci
+      - run: npm run build:core
+      - run: cargo test --manifest-path core/Cargo.toml --locked
       - run: npm ci --prefix examples/project --ignore-scripts
       - run: npm run build
       - name: Electron interaction (Linux)

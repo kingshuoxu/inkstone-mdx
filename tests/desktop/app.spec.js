@@ -15,7 +15,9 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
   const project = await fs.mkdtemp(path.join(os.tmpdir(), "ink-project-"));
   await fs.cp(path.resolve("examples/project"), project, { recursive: true });
   const file = path.join(project, "index.mdx");
-  const source = await fs.readFile(file, "utf8");
+  const source =
+    (await fs.readFile(file, "utf8")) + "\n\n" + "plain text ".repeat(2000);
+  await fs.writeFile(file, source);
   const args = process.env.INKSTONE_EXECUTABLE ? [] : [path.resolve(".")];
   args.push("--user-data-dir=" + userData);
   if (process.platform === "linux") args.push("--no-sandbox"); // CI container only; installed app never adds this.
@@ -55,6 +57,20 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
         .frameLocator("iframe")
         .getByRole("heading", { name: "A little space to think." }),
     ).toBeVisible();
+    await page.locator(".cm-content").click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.insertText(
+      "# Rust standalone\n\n" + "plain text ".repeat(2000),
+    );
+    await expect(
+      page
+        .frameLocator("iframe")
+        .getByRole("heading", { name: "Rust standalone" }),
+    ).toBeVisible();
+    await expect(page.locator("#compile-status")).toHaveAttribute(
+      "data-engine",
+      "rust",
+    );
     await page.getByRole("link", { name: "Inkstone home" }).click();
     await page.locator("#project-open").click();
     await expect(page.locator("#project-status")).toContainText(
@@ -88,6 +104,14 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
     await expect(
       frame.getByRole("button", { name: "Project component: 1" }),
     ).toBeVisible();
+    expect(
+      (
+        await page.evaluate(
+          (source) => window.inkstoneDesktop.compile(source),
+          source,
+        )
+      ).engines,
+    ).toContain("rust");
     await page.screenshot({ path: "docs/desktop-project.png" });
     const preview = page.frames().find((f) => f !== page.mainFrame());
     expect(

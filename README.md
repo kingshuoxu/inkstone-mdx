@@ -103,3 +103,7 @@ Public repository: https://github.com/kingshuoxu/inkstone-mdx
 This source snapshot was recovered from the latest saved Library archive (version 1) after the original cloud workspace disappeared. It includes the follow-up fix that pauses opened/recovered documents until explicit trust confirmation. The original Git history and commit `bfb22aa` were not included in that archive and could not be recovered. The public repository therefore starts with a new history; it does not claim to preserve the original commit hash.
 
 Before publication, all 22 archive files were checked for common credential patterns and personal contact information; none were detected. The archive contains no `.git`, `.env`, credential files, or runtime browser data. This check is not a formal security audit.
+
+### Rust compilation core
+
+The MDX compiler now has a shared Rust/WASM path for larger documents, with JavaScript fallback for small documents, footnotes and compatibility/load failures. UI, files and project bundling remain JavaScript/Electron/esbuild. Before the existing development/build commands, install Rust with the `wasm32-unknown-unknown` target and `wasm-bindgen-cli` 0.2.105, then run `npm run build:core`. Packaged apps need no Rust toolchain. See [build and compatibility details](core/README.md) and [measured performance](docs/RUST-PERFORMANCE.md). Rust does not make executing arbitrary MDX safe; all existing trust boundaries and limits still apply.

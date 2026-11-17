@@ -6,3 +6,8 @@ playwright-report/
 
 release/
 desktop-test-results/
+
+core/target/
+core/pkg/
+src/core.generated.js
+baseline/

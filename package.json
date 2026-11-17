@@ -15,7 +15,9 @@
     "desktop": "npm run build && electron .",
     "desktop:pack": "npm run build && electron-builder --dir",
     "desktop:dist": "npm run build && electron-builder --publish never",
-    "test:desktop": "playwright test --config playwright.desktop.config.js"
+    "test:desktop": "playwright test --config playwright.desktop.config.js",
+    "build:core": "node scripts/build-core.mjs",
+    "bench:core": "node scripts/bench-core.mjs"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.3.3",
@@ -49,7 +51,10 @@
       "desktop/**",
       "src/preview-shared.jsx",
       "package.json",
-      "src/i18n.js"
+      "src/i18n.js",
+      "src/compiler.js",
+      "src/compiler-legacy.js",
+      "src/core.generated.js"
     ],
     "directories": {
       "output": "release"
