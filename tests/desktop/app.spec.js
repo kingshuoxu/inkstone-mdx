@@ -58,7 +58,7 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
     });
     await expect(
       page
-        .frameLocator("iframe")
+        .frameLocator("iframe:not([data-pending])")
         .getByRole("heading", { name: "A little space to think." }),
     ).toBeVisible();
     await page.locator(".cm-content").click();
@@ -68,7 +68,7 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
     );
     await expect(
       page
-        .frameLocator("iframe")
+        .frameLocator("iframe:not([data-pending])")
         .getByRole("heading", { name: "Rust standalone" }),
     ).toBeVisible();
     await expect(page.locator("#compile-status")).toHaveAttribute(
@@ -100,7 +100,7 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
     await page.locator("#open").click();
     await expect(page.locator("iframe")).toHaveCount(0);
     await page.getByRole("button", { name: "Run preview" }).click();
-    const frame = page.frameLocator("iframe");
+    const frame = page.frameLocator("iframe:not([data-pending])");
     await expect(
       frame.getByRole("button", { name: "Project component: 0" }),
     ).toBeVisible();
@@ -256,7 +256,7 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
     await page.getByRole("button", { name: "运行预览" }).click();
     await expect(
       page
-        .frameLocator("iframe")
+        .frameLocator("iframe:not([data-pending])")
         .getByRole("button", { name: "Project component: 0" }),
     ).toBeVisible();
     await page.locator("#save").click();

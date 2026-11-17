@@ -41,8 +41,8 @@ fn normalize_tables(node: &mut mdxjs::hast::Node) {
 
 // Compiles data only. No filesystem, network, JavaScript evaluation or plugin hooks.
 fn compile_inner(source: &str, program: bool) -> Result<String, String> {
-    if source.len() > 512_000 {
-        return Err("Preview source exceeds 512000 UTF-8 bytes".into());
+    if source.len() > 5 * 1024 * 1024 {
+        return Err("Preview source exceeds 5 MiB".into());
     }
     let options = mdxjs::Options::gfm();
     let tree = mdxjs::mdast_util_from_mdx(source, &options).map_err(|e| e.to_string())?;

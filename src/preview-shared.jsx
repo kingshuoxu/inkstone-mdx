@@ -28,10 +28,30 @@ export const components = {
     );
   },
 };
+export function reportPreview(state, message = "") {
+  const token = JSON.parse(
+    document.getElementById("preview-token")?.textContent || '""',
+  );
+  window.parent.postMessage(
+    { type: "inkstone-preview", token, state, message },
+    "*",
+  );
+}
+export function Ready({ children }) {
+  React.useEffect(() => {
+    // The React tree has committed. This is not a guarantee that every offscreen
+    // block has been painted, nor a promise that document code cannot hang.
+    reportPreview("ready");
+  }, []);
+  return children;
+}
 export class Boundary extends React.Component {
   state = { error: null };
   static getDerivedStateFromError(error) {
     return { error };
+  }
+  componentDidCatch(error) {
+    reportPreview("error", String(error.message));
   }
   render() {
     return this.state.error ? (
@@ -48,6 +68,7 @@ export class Boundary extends React.Component {
 export function installErrorReporting() {
   // React boundaries do not catch event-handler errors or rejected promises.
   function reportAsyncError(message) {
+    reportPreview("error", message);
     const error = document.createElement("pre");
     error.className = "error";
     error.textContent =

@@ -44,4 +44,5 @@ jobs:
           path: |
             docs/*.png
             docs/core-benchmark.jsonl
+            docs/full-preview-*.json
             test-results/

@@ -9,7 +9,7 @@ test("real JSX, component state, split modes and mobile layout", async ({
   page,
 }, testInfo) => {
   await page.goto("/");
-  const frame = page.frameLocator("iframe");
+  const frame = page.frameLocator("iframe:not([data-pending])");
   await expect(
     frame.getByRole("heading", { name: "A little space to think." }),
   ).toBeVisible();
@@ -40,16 +40,24 @@ test("syntax errors retain last good preview, recover draft and render runtime e
 }) => {
   await page.goto("/");
   await expect(
-    page.frameLocator("iframe").getByRole("heading", { level: 1 }).first(),
+    page
+      .frameLocator("iframe:not([data-pending])")
+      .getByRole("heading", { level: 1 })
+      .first(),
   ).toBeVisible();
   await replace(page, "<Broken>");
   await expect(page.locator("#preview-error")).toBeVisible();
   await expect(
-    page.frameLocator("iframe").getByRole("heading", { level: 1 }).first(),
+    page
+      .frameLocator("iframe:not([data-pending])")
+      .getByRole("heading", { level: 1 })
+      .first(),
   ).toHaveText("A little space to think.");
   await replace(page, "# Recovered\n\n{2 + 3}");
   await expect(
-    page.frameLocator("iframe").getByRole("heading", { level: 1 }),
+    page
+      .frameLocator("iframe:not([data-pending])")
+      .getByRole("heading", { level: 1 }),
   ).toHaveText("Recovered");
   page.on("dialog", (d) => d.accept());
   await page.reload();
@@ -57,12 +65,12 @@ test("syntax errors retain last good preview, recover draft and render runtime e
   await expect(page.locator("iframe")).toHaveCount(0);
   await page.getByRole("button", { name: "Run preview" }).click();
   await expect(
-    page.frameLocator("iframe").getByRole("heading", { level: 1 }),
+    page
+      .frameLocator("iframe:not([data-pending])")
+      .getByRole("heading", { level: 1 }),
   ).toHaveText("Recovered");
   await replace(page, "{unknownVariable}");
-  await expect(page.frameLocator("iframe").locator("#root")).toContainText(
-    "Runtime error",
-  );
+  await expect(page.locator("#preview-error")).toContainText("unknownVariable");
 });
 test("sandbox blocks parent DOM, storage, fetch, and has no app bridge", async ({
   page,
@@ -72,9 +80,9 @@ test("sandbox blocks parent DOM, storage, fetch, and has no app bridge", async (
     page,
     `{(() => { let a,b; try { a=parent.document.body.innerHTML } catch { a='parent blocked' } try { localStorage.setItem('escape','yes'); b='bad' } catch { b='storage blocked' } return a+' / '+b+' / '+typeof window.require })()}`,
   );
-  await expect(page.frameLocator("iframe").locator("#root")).toContainText(
-    "parent blocked / storage blocked / undefined",
-  );
+  await expect(
+    page.frameLocator("iframe:not([data-pending])").locator("#root"),
+  ).toContainText("parent blocked / storage blocked / undefined");
   expect(await page.locator("iframe").getAttribute("sandbox")).toBe(
     "allow-scripts",
   );
@@ -211,7 +219,9 @@ test("opened files require explicit trust before executing preview", async ({
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Run preview" }).click();
   await expect(
-    page.frameLocator("iframe").getByRole("heading", { level: 1 }),
+    page
+      .frameLocator("iframe:not([data-pending])")
+      .getByRole("heading", { level: 1 }),
   ).toHaveText("Opened");
 });
 
@@ -239,7 +249,9 @@ test("Chinese UI switches live, preserves source and undo, and persists after re
     page.getByRole("heading", { name: "让文字，拥有更多可能。" }),
   ).toBeVisible();
   await expect(
-    page.frameLocator("iframe").getByRole("button", { name: "已点击 0 次" }),
+    page
+      .frameLocator("iframe:not([data-pending])")
+      .getByRole("button", { name: "已点击 0 次" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "组件与帮助 ↗" }).click();
   await expect(
@@ -393,7 +405,7 @@ test("Rust chunk failure falls back without losing source or preview", async ({
   await replace(page, source);
   await expect(
     page
-      .frameLocator("iframe")
+      .frameLocator("iframe:not([data-pending])")
       .getByRole("heading", { name: "Fallback preserved" }),
   ).toBeVisible();
   await expect(page.locator("#compile-status")).toHaveAttribute(

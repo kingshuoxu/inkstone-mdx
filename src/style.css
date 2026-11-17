@@ -551,3 +551,13 @@ dialog pre {
     padding: 7px 4px;
   }
 }
+
+#preview {
+  position: relative;
+}
+
+.preview-placeholder {
+  padding: 28px;
+  color: #687268;
+  line-height: 1.8;
+}

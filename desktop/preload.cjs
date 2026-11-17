@@ -11,6 +11,7 @@ if (process.isMainFrame)
       revoke: () => ipcRenderer.invoke("workspace:revoke"),
       save: (source, copy) =>
         ipcRenderer.invoke("document:save", { source, copy }),
+      cancelCompile: () => ipcRenderer.invoke("workspace:cancel-compile"),
       compile: (source) => ipcRenderer.invoke("workspace:compile", source),
       preview: (html) => ipcRenderer.invoke("preview:prepare", html),
       clearPreview: () => ipcRenderer.invoke("preview:clear"),

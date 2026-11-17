@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { build } from "esbuild";
 import { compileWithEngine } from "../src/compiler.js";
-import { checkedPath, isInside } from "./files.mjs";
+import { checkedPath, checkedSource, isInside } from "./files.mjs";
+import { MAX_BUNDLE_BYTES } from "./preview-limits.mjs";
 const require = createRequire(import.meta.url);
 const shared = fileURLToPath(
   new URL("../src/preview-shared.jsx", import.meta.url),
@@ -15,18 +16,18 @@ const schedulerRoot = path.dirname(require.resolve("scheduler/package.json"));
 export async function bundleProject({ root, file, source }) {
   root = await fs.realpath(root);
   file = await checkedPath(root, file);
-  if (Buffer.byteLength(source) > 512000)
-    throw Error("Project preview limit is 500 KB. Source can still be saved.");
+  checkedSource(source);
   const start = performance.now();
   const engines = new Set();
   async function compileDocument(text) {
+    checkedSource(text);
     const result = await compileWithEngine(text, { program: true });
     engines.add(result.engine);
     return result.code;
   }
   const result = await build({
     stdin: {
-      contents: `import React from 'react';import {createRoot} from 'react-dom/client';import {components,Boundary,installErrorReporting} from ${JSON.stringify(shared)};import MDX from 'inkstone:document';installErrorReporting();createRoot(document.getElementById('root')).render(React.createElement(Boundary,null,React.createElement(MDX,{components})));`,
+      contents: `import React from 'react';import {createRoot} from 'react-dom/client';import {components,Boundary,Ready,reportPreview,installErrorReporting} from ${JSON.stringify(shared)};import MDX from 'inkstone:document';installErrorReporting();try{createRoot(document.getElementById('root')).render(React.createElement(Boundary,null,React.createElement(Ready,null,React.createElement(MDX,{components}))));}catch(error){reportPreview('error',error.message);}`,
       resolveDir: path.dirname(file),
       sourcefile: "inkstone-entry.jsx",
       loader: "jsx",
@@ -112,8 +113,10 @@ export async function bundleProject({ root, file, source }) {
   const css =
     result.outputFiles.find((f) => f.path.endsWith(".css"))?.text || "";
   if (!js) throw Error("Bundler produced no preview.");
-  if (js.length + css.length > 10 * 1024 * 1024)
-    throw Error("Preview bundle exceeds 10 MiB.");
+  if (Buffer.byteLength(js) + Buffer.byteLength(css) > MAX_BUNDLE_BYTES)
+    throw Error(
+      "Preview bundle exceeds 64 MiB. Source is safe; no partial preview was shown.",
+    );
   return {
     js,
     css,

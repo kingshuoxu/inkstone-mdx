@@ -20,6 +20,10 @@ import {
   checkedSource,
 } from "./files.mjs";
 import { normalizeLanguage, translate, translateError } from "../src/i18n.js";
+import {
+  checkedPreviewHTML,
+  PROJECT_COMPILE_TIMEOUT_MS,
+} from "./preview-limits.mjs";
 let language = "en";
 const t = (key) => translate(language, key);
 function updateMenu() {
@@ -98,11 +102,11 @@ function validate(event) {
   )
     throw Error("Only the application main frame may use this operation.");
 }
-function cancelCompile() {
+function cancelCompile(clearPreview = true) {
   epoch++;
   compiling?.terminate();
   compiling = null;
-  preview = null;
+  if (clearPreview) preview = null;
 }
 function register(name, fn) {
   ipcMain.handle(name, async (event, ...args) => {
@@ -300,42 +304,62 @@ async function boot() {
     checkedSource(source);
     if (!workspace || !document)
       throw Error("Trust a workspace and open its MDX file first.");
-    const file = await checkedPath(workspace, document.path);
-    cancelCompile();
+    cancelCompile(false);
     const id = epoch;
+    const root = workspace;
+    const file = await checkedPath(root, document.path);
+    if (id !== epoch)
+      throw Error("Compilation was superseded or workspace trust was revoked.");
     return new Promise((resolve, reject) => {
       const worker = new Worker(
         new URL("./bundle-worker.mjs", import.meta.url),
-        { workerData: { root: workspace, file, source } },
+        {
+          workerData: { root, file, source },
+          resourceLimits: { maxOldGenerationSizeMb: 2048 },
+        },
       );
       compiling = worker;
-      const timer = setTimeout(() => {
-        worker.terminate();
-        reject(Error("Project compilation timed out after 15 seconds."));
-      }, 15000);
-      worker.once("message", (message) => {
-        clearTimeout(timer);
-        if (id !== epoch)
-          return reject(
-            Error("Compilation was superseded or workspace trust was revoked."),
-          );
-        compiling = null;
-        message.error ? reject(Error(message.error)) : resolve(message.result);
-      });
-      worker.once("error", (error) => {
-        clearTimeout(timer);
-        reject(error);
-      });
-      worker.once("exit", (code) => {
+      let settled = false;
+      const fail = (error) => {
+        if (settled) return;
+        settled = true;
         clearTimeout(timer);
         if (compiling === worker) compiling = null;
-        if (code !== 0) reject(Error("Project compilation cancelled."));
+        reject(error);
+      };
+      const timer = setTimeout(() => {
+        fail(
+          Error(
+            "Project compilation timed out after 120 seconds. Source is safe; no partial preview was shown.",
+          ),
+        );
+        worker.terminate();
+      }, PROJECT_COMPILE_TIMEOUT_MS);
+      worker.once("message", (message) => {
+        if (settled) return;
+        if (id !== epoch)
+          return fail(
+            Error("Compilation was superseded or workspace trust was revoked."),
+          );
+        if (message.error) return fail(Error(message.error));
+        settled = true;
+        clearTimeout(timer);
+        if (compiling === worker) compiling = null;
+        resolve(message.result);
+      });
+      worker.once("error", fail);
+      worker.once("exit", () => {
+        // Even an exit code of zero without a response must settle the IPC.
+        if (!settled) fail(Error("Project compilation cancelled."));
       });
     });
   });
+  register("workspace:cancel-compile", () => {
+    cancelCompile(false);
+    return true;
+  });
   register("preview:prepare", (html) => {
-    if (typeof html !== "string" || html.length > 12 * 1024 * 1024)
-      throw Error("Invalid preview");
+    checkedPreviewHTML(html);
     const url = "inkstone-preview://document/" + randomUUID();
     preview = { url, html };
     return url;

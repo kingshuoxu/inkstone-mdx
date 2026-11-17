@@ -57,6 +57,7 @@
       "package.json",
       "src/i18n.js",
       "src/compiler.js",
+      "src/preview-limits.js",
       "src/compiler-legacy.js",
       "src/core.generated.js"
     ],
