@@ -6,7 +6,7 @@
 
 [English](README.en.md) · [MIT License](LICENSE) · [桌面版指南](docs/DESKTOP.md) · [测试与限制](docs/EXTENDED-VALIDATION.md)
 
-> **开发预览版**：本页描述 `main` 分支的功能；[PR #3](https://github.com/kingshuoxu/inkstone-mdx/pull/3) 已合并，尚未正式发布。桌面测试包未签名，macOS 未公证。请只运行可信的 MDX 文档与项目。
+> **开发预览版**：本页描述完整大文件预览开发分支；[PR #4](https://github.com/kingshuoxu/inkstone-mdx/pull/4) 尚未合并或正式发布。桌面测试包未签名，macOS 未公证。请只运行可信的 MDX 文档与项目。
 
 ## 页面预览
 

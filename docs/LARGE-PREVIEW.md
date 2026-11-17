@@ -12,6 +12,10 @@ This change compiles the entire MDX document up to the existing 5 MiB file limit
 - Source is limited to 5 MiB, compiled output to 64 MiB, desktop preview HTML to 80 MiB. These are guards, not guarantees that arbitrary MDX is fast or safe. Errors preserve source and the last good preview.
 - Runtime JavaScript can still freeze its renderer; the iframe sandbox prevents app access, not arbitrary CPU/memory use.
 
+## Compiler work
+
+The Rust production JSX rewrite used to request line locations for every tag even though production output never uses those reference locations. The upstream line lookup scans from line one, causing superlinear work on documents with many lines and tags. This revision skips only that unused production-stage mapping; parsing and prior transforms retain source locations. A Rust test compares generated code byte-for-byte with the previous location-enabled path, including Unicode, component references and project ESM.
+
 ## Validation
 
 Validation is in progress for the initial implementation. Automated cases cover complete roughly 5 MiB plain and richly formatted documents (including the prior 300,000-line fixture), bottom-of-document markers and interactive components, whole-document references/Unicode/footnotes, stale compilation cancellation, and exact-5-MiB trusted desktop projects. Results and actual timings will be recorded after CI completes. Editing-only benchmark numbers in the README are not full-preview timings.

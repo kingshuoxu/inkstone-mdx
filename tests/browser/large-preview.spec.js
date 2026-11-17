@@ -83,6 +83,8 @@ for (const kind of ["long-paragraphs", "rich-300k-lines"]) {
       `docs/full-preview-${kind}.json`,
       JSON.stringify(timing, null, 2),
     );
+    await page.locator(".cm-content").focus();
+    await page.keyboard.press("ControlOrMeta+End");
     await page.screenshot({ path: `docs/full-preview-${kind}.png` });
     // End-of-document edits must update the full render, not a truncated prefix.
     await page.locator(".cm-content").focus();
@@ -151,6 +153,13 @@ test("large edits are batched and old preview stays visible until the latest ful
   test.setTimeout(120000);
   await page.addInitScript(() => {
     window.compileRequests = [];
+    window.previewInputSamples = [];
+    document.addEventListener("beforeinput", () => {
+      const start = performance.now();
+      requestAnimationFrame(() =>
+        window.previewInputSamples.push(performance.now() - start),
+      );
+    });
     const Native = window.Worker;
     window.Worker = class extends Native {
       postMessage(data, ...rest) {
@@ -179,6 +188,7 @@ test("large edits are batched and old preview stays visible until the latest ful
   ).toHaveCount(1);
   await page.evaluate(() => {
     window.compileRequests = [];
+    window.previewInputSamples = [];
   });
   await page.locator(".cm-content").focus();
   await page.keyboard.press("ControlOrMeta+End");
@@ -190,9 +200,22 @@ test("large edits are batched and old preview stays visible until the latest ful
   await expect(
     frame.getByRole("heading", { name: "OLD TAIL", exact: true }),
   ).toHaveCount(1);
-  await expect(page.locator("#compile-status")).toContainText("queued");
+  await expect(page.locator("#compile-status")).toHaveText("Waiting…");
   await ready(page);
   expect(await page.evaluate(() => window.compileRequests.length)).toBe(1);
+  const samples = await page.evaluate(() =>
+    window.previewInputSamples.slice().sort((a, b) => a - b),
+  );
+  console.log(
+    "BATCHED_PREVIEW_INPUT",
+    JSON.stringify({
+      samples: samples.length,
+      medianMs: samples[Math.floor(samples.length / 2)],
+      p95Ms: samples[Math.floor(samples.length * 0.95)],
+      context:
+        "1.12 MB document, last full preview visible, edits coalesced until idle",
+    }),
+  );
   await expect(
     page
       .frameLocator("iframe:not([data-pending])")
@@ -259,4 +282,114 @@ test("edits during a delayed compile coalesce into one latest follow-up without 
       .frameLocator("iframe:not([data-pending])")
       .getByRole("heading", { name: "LATEST " + "z".repeat(9), exact: true }),
   ).toHaveCount(1);
+});
+
+test("a delayed render-ready message cannot replace a newer document after pause", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  await page.addInitScript(() => {
+    if (window !== window.top) return;
+    window.addEventListener(
+      "message",
+      (event) => {
+        if (
+          event.data?.type === "inkstone-preview" &&
+          event.data.state === "ready" &&
+          window.delayReady &&
+          !event.data.delayed
+        ) {
+          window.delayReady = false;
+          event.stopImmediatePropagation();
+          setTimeout(
+            () =>
+              window.dispatchEvent(
+                new MessageEvent("message", {
+                  data: { ...event.data, delayed: true },
+                  source: event.source,
+                }),
+              ),
+            2500,
+          );
+        }
+      },
+      true,
+    );
+  });
+  page.on("dialog", (d) => d.accept());
+  await page.goto("/");
+  await ready(page);
+  await page.evaluate(() => {
+    window.delayReady = true;
+  });
+  await open(page, "# DELAYED RENDER\n\n" + "retained content ".repeat(40000));
+  await page.locator("#pause").click();
+  await expect(page.locator("#compile-status")).toHaveAttribute(
+    "data-state",
+    "rendering",
+    { timeout: 30000 },
+  );
+  await page.locator("#pause").click();
+  await open(page, "# NEW AFTER RENDER CANCEL", "new-render.mdx");
+  await page.locator("#pause").click();
+  const frame = await ready(page);
+  await expect(frame.getByRole("heading")).toHaveText(
+    "NEW AFTER RENDER CANCEL",
+  );
+  await page.waitForTimeout(3000);
+  await expect(frame.getByRole("heading")).toHaveText(
+    "NEW AFTER RENDER CANCEL",
+  );
+});
+
+test("synchronous worker creation failure settles the large-file queue and can retry", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  await page.addInitScript(() => {
+    const Native = window.Worker;
+    window.Worker = class extends Native {
+      constructor(url, options) {
+        if (window.failNextCompileWorker && /\/worker[-.]/.test(String(url))) {
+          window.failNextCompileWorker = false;
+          throw new Error("simulated worker resource failure");
+        }
+        super(url, options);
+      }
+    };
+  });
+  page.on("dialog", (d) => d.accept());
+  await page.goto("/");
+  await ready(page);
+  await open(page, "# RETRY LARGE\n\n" + "complete content ".repeat(40000));
+  await page.evaluate(() => {
+    window.failNextCompileWorker = true;
+  });
+  await page.locator("#pause").click();
+  await expect(page.locator("#preview-error")).toContainText("Compiler failed");
+  await page.locator(".cm-content").focus();
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.insertText("\n\n# QUEUE RECOVERED\n");
+  const frame = await ready(page);
+  await expect(
+    frame.getByRole("heading", { name: "QUEUE RECOVERED", exact: true }),
+  ).toHaveCount(1);
+});
+
+test("small files still refresh promptly without exposing a scheduling mode", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await ready(page);
+  await page.locator(".cm-content").focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  const start = Date.now();
+  await page.keyboard.insertText("# SMALL LIVE\n\n{2 + 3}");
+  await expect(
+    page
+      .frameLocator("iframe:not([data-pending])")
+      .getByRole("heading", { name: "SMALL LIVE", exact: true }),
+  ).toBeVisible({ timeout: 1400 });
+  expect(Date.now() - start).toBeLessThan(1500);
+  await expect(page.locator("body")).not.toContainText("Changes queued");
 });

@@ -182,10 +182,7 @@ function schedule() {
     return;
   }
   $("#compile-status").dataset.state = "waiting";
-  ui(
-    "#compile-status",
-    large ? "Changes queued · refreshing after typing stops…" : "Waiting…",
-  );
+  ui("#compile-status", "Waiting…");
   timer = setTimeout(
     () => {
       if (compileBusy) queuedReady = true;
@@ -263,15 +260,15 @@ async function run() {
   const id = revision;
   compileBusy = true;
   activeCompileId = id;
+  const placeholder = $("#preview .preview-placeholder");
+  if (placeholder)
+    placeholder.textContent = t(
+      "Compiling the complete document in the background. You can keep editing; no content is truncated.",
+    );
   previewStarted = performance.now();
   $("#compile-status").dataset.state = "compiling";
   $("#preview-error").hidden = true;
-  ui(
-    "#compile-status",
-    previewBytes(source) > LARGE_PREVIEW_BYTES
-      ? "Compiling full document · up to 120 s…"
-      : "Compiling…",
-  );
+  ui("#compile-status", "Compiling…");
   if (desktop && project) {
     try {
       const result = await desktop.compile(source);
@@ -284,9 +281,16 @@ async function run() {
     }
     return;
   }
-  worker ||= new Worker(new URL("./worker.js", import.meta.url), {
-    type: "module",
-  });
+  try {
+    worker ||= new Worker(new URL("./worker.js", import.meta.url), {
+      type: "module",
+    });
+  } catch (error) {
+    worker = null;
+    if (finishCompile(id))
+      showError("Compiler failed. Edit to retry; source is safe.");
+    return;
+  }
   const active = worker;
   workerBusy = true;
   timeout = setTimeout(() => {
@@ -316,7 +320,14 @@ async function run() {
     if (!finishCompile(id)) return;
     showError("Compiler failed. Edit to retry; source is safe.");
   };
-  active.postMessage({ id, source });
+  try {
+    active.postMessage({ id, source });
+  } catch (error) {
+    active.terminate();
+    worker = null;
+    if (finishCompile(id))
+      showError("Compiler failed. Edit to retry; source is safe.");
+  }
 }
 function showError(error) {
   $("#compile-status").dataset.state = "error";
