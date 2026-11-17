@@ -23,6 +23,8 @@ Open the localhost URL printed by Vite. `npm run build` creates `dist/`, which c
 
 Choose **简体中文 / English** in the top toolbar. The initial language follows the browser/system language (Chinese locales use Simplified Chinese); an explicit choice is saved locally and restored on reload. The choice changes application text, accessibility labels, CodeMirror search controls, built-in preview labels and desktop dialogs/menus. It does not translate your document or discard undo history. An active preview recompiles on a language change, resetting component state; a paused document stays paused. If preference storage is unavailable, the choice works for the current session and a warning appears.
 
+On minimal Linux systems, install a Chinese system font such as `fonts-noto-cjk`; see the [desktop font requirements](docs/DESKTOP.md#chinese-display-fonts).
+
 Third-party compiler/OS error details are retained verbatim after the localized application message. Native browser/OS file-picker chrome follows the operating system; it cannot all be controlled by the app. Chinese input-method composition across OS/IME combinations has not been exhaustively tested.
 
 简体中文：顶部可切换界面语言并保存偏好。切换不会翻译或覆盖文档内容；正在运行的预览会重新编译，已暂停的文档不会自动执行。

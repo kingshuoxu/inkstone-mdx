@@ -12,6 +12,10 @@ npm run desktop
 
 `npm run desktop:dist` builds the current operating system's installer in `release/`: Linux AppImage and deb, Windows NSIS exe, macOS dmg and zip. The Desktop GitHub Actions workflow builds each on its own OS and uploads artifacts. Builds are unsigned and macOS builds are not notarized. OS security prompts are expected; no claim of signed distribution is made. CI artifacts require GitHub access and expire; there is no auto-updater or release publishing.
 
+## Chinese display fonts
+
+The application uses system fonts, including Noto Sans CJK SC, Microsoft YaHei and PingFang SC fallbacks; it does not bundle a CJK font. Windows/macOS normally supply Chinese fonts. On a minimal Linux installation, install a Chinese font (for Debian/Ubuntu: `sudo apt-get install fonts-noto-cjk`) and restart the app. Missing system glyphs otherwise appear as boxes even though UTF-8 content is preserved. The Linux desktop CI installs this font before visual tests. No remote font service is used.
+
 ## Use a project
 
 1. Choose **Open project**, select the narrowest folder containing your MDX, components and installed dependencies, and review the native trust prompt.
