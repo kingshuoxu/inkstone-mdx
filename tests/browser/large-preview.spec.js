@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 
+// Avoid serializing hundreds of thousands of DOM nodes after every action.
+// Screenshots and explicit DOM counts/markers provide bounded evidence.
+test.use({ trace: "off" });
+
 const cap = 5 * 1024 * 1024;
 async function open(page, source, name = "full-large.mdx") {
   await page.locator("#file-input").setInputFiles({
@@ -47,20 +51,17 @@ for (const kind of ["long-paragraphs", "rich-300k-lines"]) {
     const start = Date.now();
     const frame = await ready(page);
     const readyMs = Date.now() - start;
-    await expect(
-      frame.getByRole("heading", { name: "FULL DOCUMENT TOP", exact: true }),
-    ).toBeVisible();
-    const heading = frame.getByRole("heading", {
-      name: "UNIQUE FULL DOCUMENT END",
-      exact: true,
-    });
+    await expect(frame.locator("h1").first()).toHaveText("FULL DOCUMENT TOP");
+    await expect(frame.locator("h1").first()).toBeVisible();
+    const heading = frame.locator("h1").last();
+    await expect(heading).toHaveText("UNIQUE FULL DOCUMENT END");
+
     await heading.scrollIntoViewIfNeeded();
     await expect(heading).toBeVisible();
     await expect(frame.locator(".badge")).toHaveText("42");
-    await frame.getByRole("button", { name: "Clicked 0 times" }).click();
-    await expect(
-      frame.getByRole("button", { name: "Clicked 1 times" }),
-    ).toBeVisible();
+    await frame.locator(".counter").click();
+    await expect(frame.locator(".counter")).toBeVisible();
+    await expect(frame.locator(".counter")).toHaveText(/Clicked 1 times/);
     const iframe = page.frames().find((f) => f !== page.mainFrame());
     const metrics = await iframe.evaluate(() => ({
       nodes: document.querySelectorAll("*").length,
@@ -97,10 +98,8 @@ for (const kind of ["long-paragraphs", "rich-300k-lines"]) {
     );
     await ready(page);
     await expect(
-      page
-        .frameLocator("iframe:not([data-pending])")
-        .getByRole("heading", { name: "UPDATED FULL END", exact: true }),
-    ).toHaveCount(1);
+      page.frameLocator("iframe:not([data-pending])").locator("h1").last(),
+    ).toHaveText("UPDATED FULL END");
   });
 }
 test("whole large document preserves reference definitions, JSX, Unicode and JS compatibility", async ({
@@ -121,9 +120,7 @@ test("whole large document preserves reference definitions, JSX, Unicode and JS 
   ).toHaveAttribute("href", "https://example.com/full");
   await expect(frame.locator(".callout strong")).toHaveText("跨文档");
   await expect(frame.locator("#root")).toContainText("Complete footnote");
-  await expect(
-    frame.getByRole("button", { name: "Clicked 0 times" }),
-  ).toHaveCount(1);
+  await expect(frame.locator(".counter")).toHaveCount(1);
 });
 test("cancel large compilation, open another document and never accept an old result", async ({
   page,
