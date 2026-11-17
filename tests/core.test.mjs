@@ -83,3 +83,23 @@ test("payload cannot escape script element; CSP denies network and frames", () =
   assert.match(html, /frame-src 'none'/);
   assert.match(html, /form-action 'none'/);
 });
+
+test("browser handle conflict checks preserve UTF-8 BOM and reject invalid bytes", async () => {
+  const baseline = "\ufeff# 中文\r\n";
+  let written;
+  const h = {
+    getFile: async () => new Blob([baseline]),
+    createWritable: async () => ({
+      write: async (s) => {
+        written = s;
+      },
+      close: async () => {},
+    }),
+  };
+  await saveHandle(h, baseline + "new", baseline);
+  assert.equal(written, baseline + "new");
+  h.getFile = async () => new Blob([new Uint8Array([0xff])]);
+  h.createWritable = async () =>
+    assert.fail("must not overwrite invalid bytes");
+  await assert.rejects(saveHandle(h, "new", baseline));
+});

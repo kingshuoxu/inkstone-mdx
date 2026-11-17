@@ -3,7 +3,7 @@ import {
   closeSearchPanel,
   openSearchPanel,
 } from "@codemirror/search";
-import { Compartment, EditorState } from "@codemirror/state";
+import { Compartment, EditorState, Text } from "@codemirror/state";
 import {
   LANGUAGE_KEY,
   initialLanguage,
@@ -14,7 +14,7 @@ import {
 import { EditorView, basicSetup } from "codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { sample } from "./sample.js";
-import { readDraft, writeDraft, saveHandle } from "./storage.js";
+import { readDraft, writeDraft, saveHandle, fileText } from "./storage.js";
 import { previewDocument } from "./sandbox.js";
 import runtime from "./runtime.generated.txt?raw";
 import "./style.css";
@@ -203,7 +203,7 @@ function showError(error) {
   ui("#compile-status", "Preview error · last good view");
 }
 const editor = new EditorView({
-  doc: source,
+  doc: Text.of(source.split(/\r\n|\r|\n/)),
   parent: $("#editor"),
   extensions: [
     basicSetup,
@@ -270,7 +270,11 @@ async function load(file, newHandle = null) {
     effects: lineEndingConfig.reconfigure(
       EditorState.lineSeparator.of(lineEnding(text)),
     ),
-    changes: { from: 0, to: editor.state.doc.length, insert: text },
+    changes: {
+      from: 0,
+      to: editor.state.doc.length,
+      insert: Text.of(text.split(/\r\n|\r|\n/)),
+    },
   });
   source = text;
   dirty = false;
@@ -353,7 +357,7 @@ async function save(copy = false) {
         ],
       });
       const file = await target.getFile();
-      await saveHandle(target, snapshot, await file.text());
+      await saveHandle(target, snapshot, await fileText(file));
     } else if (target) await saveHandle(target, snapshot, baseline);
     else {
       const url = URL.createObjectURL(

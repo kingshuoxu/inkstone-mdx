@@ -9,6 +9,8 @@ async function launch() {
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), "ink-extended-"));
   const args = process.env.INKSTONE_EXECUTABLE ? [] : [path.resolve(".")];
   args.push("--user-data-dir=" + profile);
+  if (process.env.INKSTONE_SYSTEM_IME === "1")
+    args.push("--ozone-platform=x11", "--gtk-version=3");
   if (process.platform === "linux") args.push("--no-sandbox");
   const app = await electron.launch({
     executablePath: process.env.INKSTONE_EXECUTABLE || undefined,

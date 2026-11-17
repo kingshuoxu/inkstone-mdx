@@ -10,4 +10,6 @@ for attempt in $(seq 1 30); do
   sleep 0.2
 done
 ibus engine
+export IBUS_ADDRESS="$(ibus address)"
+gsettings set org.freedesktop.ibus.engine.libpinyin initial-input-mode true
 npx playwright test --config playwright.desktop.config.js --grep 'real Linux IBus'
