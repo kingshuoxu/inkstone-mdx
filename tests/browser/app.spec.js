@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 async function replace(page, source) {
-  const editor = page.getByRole("textbox", { name: "MDX source editor" });
+  const editor = page.locator("#editor .cm-content");
   await editor.click();
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.insertText(source);
@@ -134,62 +134,65 @@ test("failed native save retains dirty source", async ({ page }) => {
   await expect(page.locator(".cm-content")).toContainText("Keep me");
   expect(await page.title()).toMatch(/^•/);
 });
-test("measure real input to next animation frame on 100 KB document", async ({
-  page,
-}, testInfo) => {
-  await page.goto("/");
-  const source = "# Paragraph\n\nA quiet line with **formatting**.\n\n".repeat(
-    2200,
-  );
-  await page.locator("#file-input").setInputFiles({
-    name: "benchmark.mdx",
-    mimeType: "text/plain",
-    buffer: Buffer.from(source),
-  });
-  await expect(page.locator("#file-name")).toHaveText("benchmark.mdx");
-  await expect(page.locator("iframe")).toHaveCount(0);
-  const editor = page.getByRole("textbox", { name: "MDX source editor" });
-  await editor.click();
-  await page.keyboard.press("ControlOrMeta+End");
-  await page.evaluate(() => {
-    window.inputSamples = [];
-    document
-      .querySelector(".cm-content")
-      .addEventListener("beforeinput", () => {
-        const start = performance.now();
-        requestAnimationFrame(() =>
-          window.inputSamples.push(performance.now() - start),
-        );
-      });
-  });
-  for (let i = 0; i < 20; i++) {
-    await page.keyboard.insertText("a");
+for (const repeats of [2200, 22000]) {
+  test(`measure real input to next animation frame (${repeats} paragraphs)`, async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/");
+    const source =
+      "# Paragraph\n\nA quiet line with **formatting**.\n\n".repeat(repeats);
+    await page.locator("#file-input").setInputFiles({
+      name: "benchmark.mdx",
+      mimeType: "text/plain",
+      buffer: Buffer.from(source),
+    });
+    await expect(page.locator("#file-name")).toHaveText("benchmark.mdx");
+    await expect(page.locator("iframe")).toHaveCount(0);
+    const editor = page.getByRole("textbox", { name: "MDX source editor" });
+    await editor.click();
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.evaluate(() => {
+      window.inputSamples = [];
+      document
+        .querySelector(".cm-content")
+        .addEventListener("beforeinput", () => {
+          const start = performance.now();
+          requestAnimationFrame(() =>
+            window.inputSamples.push(performance.now() - start),
+          );
+        });
+    });
+    for (let i = 0; i < 20; i++) {
+      await page.keyboard.insertText("a");
+      await expect
+        .poll(() => page.evaluate(() => window.inputSamples.length))
+        .toBe(i + 1);
+    }
+    const values = await page.evaluate(() =>
+      window.inputSamples.sort((a, b) => a - b),
+    );
+    const result = {
+      bytes: Buffer.byteLength(source),
+      samples: values.length,
+      median: values[10],
+      p95: values[18],
+      preview: "paused",
+      browser: "chromium",
+    };
+    console.log("INPUT_TO_FRAME_MS", JSON.stringify(result));
+    await testInfo.attach("input-to-frame.json", {
+      body: JSON.stringify(result),
+      contentType: "application/json",
+    });
     await expect
-      .poll(() => page.evaluate(() => window.inputSamples.length))
-      .toBe(i + 1);
-  }
-  const values = await page.evaluate(() =>
-    window.inputSamples.sort((a, b) => a - b),
-  );
-  const result = {
-    bytes: Buffer.byteLength(source),
-    samples: values.length,
-    median: values[10],
-    p95: values[18],
-    preview: "paused",
-    browser: "chromium",
-  };
-  console.log("INPUT_TO_FRAME_MS", JSON.stringify(result));
-  await testInfo.attach("input-to-frame.json", {
-    body: JSON.stringify(result),
-    contentType: "application/json",
+      .poll(() =>
+        page.evaluate(
+          () => JSON.parse(localStorage.getItem("inkstone.draft.v1")).source,
+        ),
+      )
+      .toBe(source + "a".repeat(20));
   });
-  expect(
-    await page.evaluate(
-      () => JSON.parse(localStorage.getItem("inkstone.draft.v1")).source,
-    ),
-  ).toBe(source + "a".repeat(20));
-});
+}
 
 test("opened files require explicit trust before executing preview", async ({
   page,
@@ -210,4 +213,173 @@ test("opened files require explicit trust before executing preview", async ({
   await expect(
     page.frameLocator("iframe").getByRole("heading", { level: 1 }),
   ).toHaveText("Opened");
+});
+
+test("Chinese UI switches live, preserves source and undo, and persists after reload", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  page.on("dialog", (d) => d.accept());
+  await replace(page, "# 中文文档\n\n<Badge>中文标签</Badge>\n\n<Counter />");
+  await page.getByRole("textbox", { name: "MDX source editor" }).click();
+  await page.keyboard.press("ControlOrMeta+f");
+  await expect(
+    page.getByRole("textbox", { name: "Find", exact: true }),
+  ).toBeVisible();
+  await page.locator("#language").selectOption("zh-CN");
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  await expect(
+    page.getByRole("textbox", { name: "查找", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "关闭", exact: true }).click();
+  await expect(
+    page.getByRole("textbox", { name: "MDX 源码编辑器" }),
+  ).toContainText("中文文档");
+  await expect(
+    page.getByRole("heading", { name: "让文字，拥有更多可能。" }),
+  ).toBeVisible();
+  await expect(
+    page.frameLocator("iframe").getByRole("button", { name: "已点击 0 次" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "组件与帮助 ↗" }).click();
+  await expect(
+    page.getByRole("heading", { name: "让 Markdown 遇见组件。" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "关闭帮助" }).click();
+  await page.screenshot({ path: `docs/chinese-${testInfo.project.name}.png` });
+  const editor = page.getByRole("textbox", { name: "MDX 源码编辑器" });
+  await editor.click();
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.insertText("\n\n新增文字");
+  await page.locator("#language").selectOption("en");
+  await page.getByRole("textbox", { name: "MDX source editor" }).click();
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(
+    page.getByRole("textbox", { name: "MDX source editor" }),
+  ).not.toContainText("新增文字");
+  await expect(
+    page.getByRole("textbox", { name: "MDX source editor" }),
+  ).toContainText("中文文档");
+  await page.locator("#language").selectOption("zh-CN");
+  await page.reload();
+  await expect(page.locator("#language")).toHaveValue("zh-CN");
+  await expect(page.locator("#notice")).toContainText("已恢复上次的草稿");
+  await expect(page.locator("iframe")).toHaveCount(0);
+  await page.getByRole("button", { name: "运行预览" }).click();
+  await replace(page, "import X from './missing.jsx'\n\n<X />");
+  await expect(page.locator("#preview-error")).toContainText("网页版不支持");
+  await page.locator("#language").selectOption("en");
+  await expect(page.locator("#preview-error")).toContainText(
+    "Imports and exports",
+  );
+  await page.locator("#language").selectOption("zh-CN");
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    390,
+  );
+  await page.screenshot({
+    path: `docs/chinese-mobile-${testInfo.project.name}.png`,
+  });
+});
+test("Chinese preference follows browser locale and survives unavailable preference storage", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ locale: "zh-CN" });
+  const page = await context.newPage();
+  await page.goto("http://127.0.0.1:4174");
+  await expect(page.locator("#language")).toHaveValue("zh-CN");
+  await page.evaluate(() => {
+    Storage.prototype.setItem = () => {
+      throw Error("quota");
+    };
+  });
+  await page.locator("#language").selectOption("en");
+  await expect(page.locator("#notice")).toContainText(
+    "Language preference could not be saved",
+  );
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await context.close();
+});
+
+test("oversized open preserves source and recovery quota failure still allows download", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await replace(page, "# 保留当前内容");
+  page.on("dialog", (d) => d.accept());
+  await page.locator("#file-input").setInputFiles({
+    name: "too-large.mdx",
+    mimeType: "text/plain",
+    buffer: Buffer.alloc(5 * 1024 * 1024 + 1, 120),
+  });
+  await expect(page.locator("#notice")).toContainText("larger than 5");
+  await expect(page.locator("#editor .cm-content")).toContainText(
+    "保留当前内容",
+  );
+  await page.evaluate(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === "inkstone.draft.v1")
+        throw new DOMException("quota", "QuotaExceededError");
+      return original.call(this, key, value);
+    };
+    delete window.showSaveFilePicker;
+  });
+  await replace(page, "# 配额失败仍可保存");
+  await expect(page.locator("#notice")).toContainText(
+    "storage is unavailable or full",
+  );
+  await expect(page.locator("#editor .cm-content")).toContainText(
+    "配额失败仍可保存",
+  );
+  const pending = page.waitForEvent("download");
+  await page.locator("#copy").click();
+  const d = await pending;
+  let text = "";
+  for await (const chunk of await d.createReadStream()) text += chunk;
+  expect(text).toBe("# 配额失败仍可保存");
+});
+
+test("large pending recovery flushes before immediate reload", async ({
+  page,
+}) => {
+  await page.goto("/");
+  page.on("dialog", (d) => d.accept());
+  const source = "# recovered\n\n" + "content ".repeat(30000);
+  await replace(page, source);
+  await page.reload();
+  await expect(page.locator("#notice")).toContainText("Recovered your last");
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("inkstone.draft.v1")).source,
+    ),
+  ).toBe(source);
+  await expect(page.locator("iframe")).toHaveCount(0);
+});
+
+test("identical queued recovery flush is not a false cross-tab conflict", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await replace(page, "# current");
+  await page.evaluate(() => {
+    const draft = JSON.parse(localStorage.getItem("inkstone.draft.v1"));
+    draft.updated++;
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "inkstone.draft.v1",
+        newValue: JSON.stringify(draft),
+      }),
+    );
+  });
+  await expect(page.locator("#notice")).not.toContainText("Another tab");
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "inkstone.draft.v1",
+        newValue: JSON.stringify({ source: "# other", name: "other.mdx" }),
+      }),
+    ),
+  );
+  await expect(page.locator("#notice")).toContainText("Another tab");
 });

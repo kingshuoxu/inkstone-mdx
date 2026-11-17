@@ -3,3 +3,6 @@ dist/
 src/runtime.generated.txt
 test-results/
 playwright-report/
+
+release/
+desktop-test-results/
