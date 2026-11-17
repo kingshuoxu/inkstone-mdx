@@ -17,7 +17,7 @@ jobs:
           cache: npm
       - name: Install Chinese system font fallback (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk ibus-libpinyin dbus-x11 xdotool
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
@@ -37,6 +37,9 @@ jobs:
       - name: Electron interaction (Windows and macOS)
         if: runner.os != 'Linux'
         run: npm run test:desktop
+      - name: Real Linux system IME
+        if: runner.os == 'Linux'
+        run: dbus-run-session -- xvfb-run -a bash scripts/test-system-ime.sh
       - run: npm run desktop:dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"

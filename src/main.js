@@ -26,6 +26,8 @@ try {
 let language = initialLanguage(preferenceStorage, navigator.language);
 const t = (key, values) => translate(language, key, values);
 const languageConfig = new Compartment();
+const lineEndingConfig = new Compartment();
+const lineEnding = (text) => text.match(/\r\n|\r|\n/)?.[0] || "\n";
 const translations = createUITranslations(document.body, () => language);
 const ui = (selector, key, values) =>
   translations.text($(selector), key, values);
@@ -200,6 +202,7 @@ const editor = new EditorView({
   parent: $("#editor"),
   extensions: [
     basicSetup,
+    lineEndingConfig.of(EditorState.lineSeparator.of(lineEnding(source))),
     markdown(),
     EditorView.lineWrapping,
     languageConfig.of([
@@ -208,7 +211,7 @@ const editor = new EditorView({
     ]),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
-        source = update.state.doc.toString();
+        source = update.state.sliceDoc();
         dirty = source !== baseline;
         refresh();
         clearTimeout(draftTimer);
@@ -234,13 +237,25 @@ function canReplace() {
 async function load(file, newHandle = null) {
   if (file.size > 5 * 1024 * 1024)
     throw new Error("Files larger than 5 MB are not supported.");
-  const text = await file.text();
+  let text;
+  try {
+    text = file.arrayBuffer
+      ? new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+          await file.arrayBuffer(),
+        )
+      : await file.text();
+  } catch {
+    throw Error("File is not valid UTF-8. Source was not replaced.");
+  }
   if (!canReplace()) return;
   pauseUntrustedPreview();
   handle = newHandle;
   name = file.name;
   baseline = text;
   editor.dispatch({
+    effects: lineEndingConfig.reconfigure(
+      EditorState.lineSeparator.of(lineEnding(text)),
+    ),
     changes: { from: 0, to: editor.state.doc.length, insert: text },
   });
   source = text;

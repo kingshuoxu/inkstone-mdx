@@ -23,6 +23,7 @@ export async function compileWithEngine(
     engine !== "javascript" &&
     (engine === "rust" || source.length > 16000) &&
     !source.includes("[^") &&
+    !/(?:https?:\/\/|www\.)[^\s<>]*&/.test(source) &&
     !/^[ \t|:-]*:[ \t|:-]*$/m.test(source) &&
     !unavailable
   ) {

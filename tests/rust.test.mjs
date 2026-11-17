@@ -107,3 +107,55 @@ test("module expressions and malformed large sources fall back to reference sema
     }
   }
 });
+
+test("extended real-world syntax corpus matches reference output with automatic fallback", async () => {
+  const corpus = [
+    "\uFEFF# BOM and 中文 🌿\r\n\r\nEscaped \\{braces\\} &copy; &#x1f331;",
+    '<section aria-label="中文" style={{color:"red",padding:2}}><input disabled /><span>{`value ${3}`}</span></section>',
+    '1. first\n   - nested\n   - **strong**\n2. second\n\n---\n\n[ref][id]\n\n[id]: https://example.com "Title"',
+    "Email foo@example.com, https://example.com/?q=a&b=c and www.example.com.",
+    '```tsx\nexport const x: number = 1\n```\n\n![alt](data:image/png;base64,AA== "caption")',
+    "{[1,2,3].filter(n=>n>1).map(n=><Badge key={n}>{n}</Badge>)}",
+  ];
+  for (const base of corpus) {
+    const source = base + "\n\n" + "padding text ".repeat(1500);
+    const outputs = [];
+    for (const engine of ["javascript", "auto"]) {
+      const { code } = await compileWithEngine(source, { engine });
+      outputs.push(
+        renderToStaticMarkup(
+          React.createElement(new Function(code)(runtime).default, {
+            components,
+          }),
+        ),
+      );
+    }
+    assert.equal(outputs[1], outputs[0]);
+  }
+});
+test("malformed large JSX/ESM retains reference diagnostic and next valid compile works", async () => {
+  for (const base of [
+    "<div a={}>x</div>",
+    "{const x = 1}",
+    "<A></B>",
+    "export const x = ;",
+    "export default 1\nexport default 2",
+  ]) {
+    const source = base + "\n\n" + "padding ".repeat(3000);
+    let expected;
+    try {
+      await compileWithEngine(source, { engine: "javascript", program: true });
+      assert.fail("must fail");
+    } catch (e) {
+      expected = e.message;
+    }
+    await assert.rejects(
+      compileWithEngine(source, { program: true }),
+      (e) => e.message === expected,
+    );
+  }
+  assert.equal(
+    (await compileWithEngine("# Works\n\n" + "text ".repeat(4000))).engine,
+    "rust",
+  );
+});

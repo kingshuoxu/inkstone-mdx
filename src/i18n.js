@@ -1,5 +1,7 @@
 export const LANGUAGE_KEY = "inkstone.language.v1";
 export const zhCN = {
+  "File is not valid UTF-8. Source was not replaced.":
+    "文件不是有效的 UTF-8 编码，当前源码未被替换。",
   "Recovery pending…": "恢复草稿待保存…",
   "Invalid language": "无效的语言选项",
   "Inkstone home": "Inkstone 首页",
