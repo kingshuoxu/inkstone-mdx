@@ -18,4 +18,13 @@ The Rust production JSX rewrite used to request line locations for every tag eve
 
 ## Validation
 
-Validation is in progress for the initial implementation. Automated cases cover complete roughly 5 MiB plain and richly formatted documents (including the prior 300,000-line fixture), bottom-of-document markers and interactive components, whole-document references/Unicode/footnotes, stale compilation cancellation, and exact-5-MiB trusted desktop projects. Results and actual timings will be recorded after CI completes. Editing-only benchmark numbers in the README are not full-preview timings.
+The [140c845 browser run](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44097478902) passed all 62 active end-to-end cases (two production-only duplicates skipped). It verified full document markers, bottom-of-document interactive components and subsequent edits, whole-document references/Unicode/footnotes, obsolete compile/render cancellation, and live updates. Native tests and all three desktop platforms passed, including exact-5-MiB trusted projects. The subsequent memory-release change is still being validated.
+
+Measured on that CI runner, not a device-independent guarantee:
+
+| Fixture                      | UTF-8 bytes |   Lines | React-ready after compile start | Observed run-to-ready | DOM elements |
+| ---------------------------- | ----------: | ------: | ------------------------------: | --------------------: | -----------: |
+| Long paragraphs              |   5,231,639 |   2,762 |                         1.106 s |               2.787 s |        1,391 |
+| Rich headings/emphasis/links |   5,234,634 | 303,462 |                        51.253 s |              53.135 s |      455,193 |
+
+Both tests scrolled to the unique final heading, clicked the final Counter and verified a new final heading after editing. The rich case is complete but remains expensive; a source-byte limit alone cannot predict rendering cost. These timings include compilation and React readiness, not just compiler execution. The earlier README editing-only benchmarks are not full-preview timings. The run's later legacy performance comparison failed because its selector did not distinguish the retained preview from a pending replacement; that selector is being corrected separately.

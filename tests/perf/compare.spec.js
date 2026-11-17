@@ -4,7 +4,10 @@ for (const size of [10000, 100000])
     page.on("dialog", (dialog) => dialog.accept()); // Known benchmark fixtures only.
     await page.goto("/");
     await expect(
-      page.frameLocator("iframe").getByRole("heading", { level: 1 }).first(),
+      page
+        .frameLocator("iframe:not([data-pending])")
+        .getByRole("heading", { level: 1 })
+        .first(),
     ).toBeVisible();
     const unit = "# Heading\n\n**bold** and {1+2}\n\n<Badge>中文</Badge>\n\n";
     const source = unit.repeat(Math.floor(size / Buffer.byteLength(unit)));
@@ -39,7 +42,9 @@ for (const size of [10000, 100000])
         await page.keyboard.insertText(String(i));
       }
       await expect(
-        page.frameLocator("iframe").getByText("MARKER" + i, { exact: true }),
+        page
+          .frameLocator("iframe:not([data-pending])")
+          .getByText("MARKER" + i, { exact: true }),
       ).toBeVisible({ timeout: 15000 });
       times.push(performance.now() - start);
       engine = await page
@@ -56,7 +61,7 @@ for (const size of [10000, 100000])
     for (let i = 0; i < 10; i++) await page.keyboard.insertText("y");
     await expect(
       page
-        .frameLocator("iframe")
+        .frameLocator("iframe:not([data-pending])")
         .getByText("MARKER3x" + "y".repeat(10), { exact: true }),
     ).toBeVisible({ timeout: 15000 });
     const input = await page.evaluate(() =>
