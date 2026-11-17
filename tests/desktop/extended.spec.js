@@ -32,7 +32,7 @@ async function close(app, profile) {
   await app.close();
   await fs.rm(profile, { recursive: true, force: true });
 }
-test("near-5-MiB native edit save copy reload and composition", async () => {
+test("near-5-MiB native edit save copy and reload", async () => {
   test.setTimeout(120000);
   const { app, page, profile } = await launch();
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "ink-large-"));
@@ -138,7 +138,7 @@ test("real Linux IBus libpinyin system IME via X11 keys", async () => {
       JSON.stringify({
         platform: "Linux",
         engine: "IBus libpinyin",
-        input: "physical X11 key events nihao + space",
+        input: "X11-injected key events nihao + space",
         result: "你好",
         humanManual: false,
       }),
