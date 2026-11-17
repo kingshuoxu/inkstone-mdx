@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 async function replace(page, source) {
-  await page.locator(".cm-content").fill(source);
+  const editor = page.getByRole("textbox", { name: "MDX source editor" });
+  await editor.click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.insertText(source);
 }
 test("real JSX, component state, split modes and mobile layout", async ({
   page,
@@ -123,41 +126,61 @@ test("failed native save retains dirty source", async ({ page }) => {
   await expect(page.locator(".cm-content")).toContainText("Keep me");
   expect(await page.title()).toMatch(/^•/);
 });
-test("measure input handler to next animation frame on 100 KB document", async ({
+test("measure real input to next animation frame on 100 KB document", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto("/");
-  await replace(
-    page,
-    "# Paragraph\n\nA quiet line with **formatting**.\n\n".repeat(2200),
+  const source = "# Paragraph\n\nA quiet line with **formatting**.\n\n".repeat(
+    2200,
   );
-  const values = [];
-  for (let i = 0; i < 20; i++) {
-    values.push(
-      await page.evaluate(async () => {
-        const el = document.querySelector(".cm-content");
+  await page.locator("#file-input").setInputFiles({
+    name: "benchmark.mdx",
+    mimeType: "text/plain",
+    buffer: Buffer.from(source),
+  });
+  await expect(page.locator("#file-name")).toHaveText("benchmark.mdx");
+  await expect(page.locator("iframe")).toHaveCount(0);
+  const editor = page.getByRole("textbox", { name: "MDX source editor" });
+  await editor.click();
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.evaluate(() => {
+    window.inputSamples = [];
+    document
+      .querySelector(".cm-content")
+      .addEventListener("beforeinput", () => {
         const start = performance.now();
-        el.dispatchEvent(
-          new InputEvent("beforeinput", {
-            inputType: "insertText",
-            data: "a",
-            bubbles: true,
-            cancelable: true,
-          }),
+        requestAnimationFrame(() =>
+          window.inputSamples.push(performance.now() - start),
         );
-        document.execCommand("insertText", false, "a");
-        await new Promise(requestAnimationFrame);
-        return performance.now() - start;
-      }),
-    );
+      });
+  });
+  for (let i = 0; i < 20; i++) {
+    await page.keyboard.insertText("a");
+    await expect
+      .poll(() => page.evaluate(() => window.inputSamples.length))
+      .toBe(i + 1);
   }
-  values.sort((a, b) => a - b);
-  console.log(
-    "INPUT_TO_FRAME_MS",
-    JSON.stringify({ median: values[10], p95: values[18], samples: 20 }),
+  const values = await page.evaluate(() =>
+    window.inputSamples.sort((a, b) => a - b),
   );
-  await page.getByRole("button", { name: "Pause", exact: true }).click();
-  await expect(page.locator("#compile-status")).toHaveText("Paused");
+  const result = {
+    bytes: Buffer.byteLength(source),
+    samples: values.length,
+    median: values[10],
+    p95: values[18],
+    preview: "paused",
+    browser: "chromium",
+  };
+  console.log("INPUT_TO_FRAME_MS", JSON.stringify(result));
+  await testInfo.attach("input-to-frame.json", {
+    body: JSON.stringify(result),
+    contentType: "application/json",
+  });
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("inkstone.draft.v1")).source,
+    ),
+  ).toBe(source + "a".repeat(20));
 });
 
 test("opened files require explicit trust before executing preview", async ({
