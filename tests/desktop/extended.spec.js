@@ -39,7 +39,7 @@ test("near-5-MiB native edit save copy and reload", async () => {
   const file = path.join(dir, "large.mdx"),
     copy = path.join(dir, "copy.mdx");
   try {
-    const unit = "中文大文件保存与恢复。\n";
+    const unit = "# 中文大文件\n\n**保存与恢复**。\n\n";
     const source = unit.repeat(
       Math.floor((5 * 1024 * 1024 - 4096) / Buffer.byteLength(unit)),
     );
@@ -60,9 +60,22 @@ test("near-5-MiB native edit save copy and reload", async () => {
     await page.locator("#open").click();
     await expect(page.locator("#file-name")).toHaveText("large.mdx");
     await expect(page.locator("iframe")).toHaveCount(0);
+    await expect(page.locator(".cm-editor")).toHaveAttribute(
+      "data-highlight-state",
+      "ready",
+      { timeout: 30000 },
+    );
+    await expect(
+      page.locator('.cm-content span[class*="ink-token-"]').first(),
+    ).toBeVisible();
     await page.locator(".cm-content").focus();
     await page.keyboard.press("ControlOrMeta+End");
     for (let i = 0; i < 20; i++) await page.keyboard.insertText("中");
+    await expect(page.locator(".cm-editor")).toHaveAttribute(
+      "data-highlight-state",
+      "ready",
+      { timeout: 30000 },
+    );
     const expected = source + "中".repeat(20);
     await page.locator("#save").click();
     await expect

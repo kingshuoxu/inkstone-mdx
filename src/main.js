@@ -12,6 +12,11 @@ import {
   editorPhrases,
 } from "./i18n.js";
 import { EditorView, basicSetup } from "codemirror";
+import {
+  backgroundHighlight,
+  backgroundHighlightTheme,
+  resetHighlight,
+} from "./background-highlight.js";
 import { markdown } from "@codemirror/lang-markdown";
 import { sample } from "./sample.js";
 import { readDraft, writeDraft, saveHandle, fileText } from "./storage.js";
@@ -28,7 +33,10 @@ const t = (key, values) => translate(language, key, values);
 const languageConfig = new Compartment();
 const lineEndingConfig = new Compartment();
 const syntaxConfig = new Compartment();
-const syntaxForLength = (length) => (length > 1000000 ? [] : [markdown()]);
+const syntaxForLength = (length) =>
+  length > 1000000
+    ? [backgroundHighlight, backgroundHighlightTheme]
+    : [markdown()];
 const lineEnding = (text) => text.match(/\r\n|\r|\n/)?.[0] || "\n";
 const translations = createUITranslations(document.body, () => language);
 const ui = (selector, key, values) =>
@@ -71,9 +79,10 @@ function refreshStats() {
   });
 }
 function refresh() {
-  const large = !syntaxConfig.get(editor.state)?.length;
+  const large = editor.state.doc.length > 1000000;
   $("#syntax-status").hidden = !large;
-  if (large) ui("#syntax-status", "Large file · syntax highlighting paused");
+  if (large)
+    ui("#syntax-status", "Large file · background syntax highlighting");
   $("#file-name").textContent = name;
   $("#side-name").textContent = name;
   $("#dirty-dot").style.visibility = dirty ? "visible" : "hidden";
@@ -212,8 +221,7 @@ const editor = new EditorView({
     EditorState.transactionExtender.of((tr) => {
       if (!tr.docChanged) return null;
       const wantsSyntax = tr.newDoc.length <= 1000000;
-      if (Boolean(syntaxConfig.get(tr.startState)?.length) === wantsSyntax)
-        return null;
+      if (tr.startState.doc.length <= 1000000 === wantsSyntax) return null;
       return {
         effects: syntaxConfig.reconfigure(syntaxForLength(tr.newDoc.length)),
       };
@@ -238,6 +246,13 @@ const editor = new EditorView({
     }),
   ],
 });
+$("#editor").addEventListener("highlight-error", () =>
+  notice(
+    t(
+      "Background highlighting failed. Reopen the document to retry; editing and saving are unaffected.",
+    ),
+  ),
+);
 function canReplace() {
   return (
     !dirty ||
@@ -267,9 +282,12 @@ async function load(file, newHandle = null) {
   name = file.name;
   baseline = text;
   editor.dispatch({
-    effects: lineEndingConfig.reconfigure(
-      EditorState.lineSeparator.of(lineEnding(text)),
-    ),
+    effects: [
+      lineEndingConfig.reconfigure(
+        EditorState.lineSeparator.of(lineEnding(text)),
+      ),
+      resetHighlight.of(null),
+    ],
     changes: {
       from: 0,
       to: editor.state.doc.length,
