@@ -12,6 +12,7 @@ const components = {
   },
 };
 const fixtures = [
+  "| left | center | right |\n| :-- | :-: | --: |\n| a | b | c |",
   "# 中文 🌱 &amp; entities\n\n**bold** *italic* ~~strike~~",
   '<Badge title="x">{[1,2].map(x => <i key={x}>{x * 2}</i>)}</Badge>',
   '<Parts.Note {...{title: "中文"}}>nested</Parts.Note>\n\n<>fragment {3}</>',
@@ -27,7 +28,10 @@ for (const [index, source] of fixtures.entries())
       const { code, engine: used } = await compileWithEngine(source, {
         engine,
       });
-      assert.equal(used, source.includes("[^") ? "javascript" : engine);
+      assert.equal(
+        used,
+        source.includes("[^") || source.includes(":--") ? "javascript" : engine,
+      );
       const C = new Function(code)(runtime).default;
       outputs.push(
         renderToStaticMarkup(React.createElement(C, { components })),
@@ -77,4 +81,29 @@ test("Both engines reject source ESM in standalone mode; fallback retains diagno
     b = e.message;
   }
   assert.equal(b, a);
+});
+
+test("module expressions and malformed large sources fall back to reference semantics", async () => {
+  const padding = "\n\n" + "ordinary text ".repeat(1500);
+  for (const source of [
+    "{import.meta.url}",
+    '{import("./component.js")}',
+    "<Broken>",
+  ]) {
+    let expected;
+    try {
+      expected = await compileWithEngine(source + padding, {
+        engine: "javascript",
+      });
+    } catch (error) {
+      expected = error.message;
+    }
+    try {
+      const result = await compileWithEngine(source + padding);
+      assert.equal(result.engine, "javascript");
+      assert.equal(result.code, expected.code);
+    } catch (error) {
+      assert.equal(error.message, expected);
+    }
+  }
 });

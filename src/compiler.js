@@ -23,6 +23,7 @@ export async function compileWithEngine(
     engine !== "javascript" &&
     (engine === "rust" || source.length > 16000) &&
     !source.includes("[^") &&
+    !/^[ \t|:-]*:[ \t|:-]*$/m.test(source) &&
     !unavailable
   ) {
     try {
@@ -32,6 +33,7 @@ export async function compileWithEngine(
       // Preserve legacy syntax support and positioned diagnostics; never evaluate code.
       // A trapped/missing WASM instance is not reused in this worker.
       if (
+        typeof WebAssembly === "undefined" ||
         error instanceof WebAssembly.RuntimeError ||
         error instanceof WebAssembly.CompileError
       )

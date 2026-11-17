@@ -49,6 +49,10 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
       win.focus();
     });
     const page = await app.firstWindow();
+    page.on("console", (m) => {
+      if (m.type() === "error") console.log("RENDERER_ERROR", m.text());
+    });
+    page.on("pageerror", (e) => console.log("PAGE_ERROR", e.message));
     await page.evaluate(() => {
       window.confirm = () => true;
     });
@@ -313,6 +317,11 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
     expect((await fs.stat(path.join(project, "boundary-copy.mdx"))).size).toBe(
       5 * 1024 * 1024,
     );
+  } catch (error) {
+    const page = await app.firstWindow();
+    console.log("FAILURE_STATE", await page.locator("body").innerText());
+    await page.screenshot({ path: "docs/desktop-failure.png" });
+    throw error;
   } finally {
     await app.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows().forEach((w) => w.destroy()),

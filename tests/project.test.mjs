@@ -62,3 +62,28 @@ test("atomic save preserves Unicode, detects conflict, and leaves no temporary f
     await fs.rm(dir, { recursive: true, force: true });
   }
 });
+
+test("Rust bundles TSX components and nested MDX with installed npm modules", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "ink-rust-project-"));
+  try {
+    await fs.cp(path.resolve("examples/project"), root, { recursive: true });
+    await fs.writeFile(
+      path.join(root, "Typed.tsx"),
+      'import clsx from "clsx";export default function Typed({value}:{value:string}) {return <b className={clsx("typed")}>{value}</b>}',
+    );
+    await fs.writeFile(
+      path.join(root, "Nested.mdx"),
+      "# Nested 中文\n\n" + "text ".repeat(4000),
+    );
+    const file = path.join(root, "index.mdx");
+    const source =
+      'import Typed from "./Typed.tsx"\nimport Nested from "./Nested.mdx"\n\n<Typed value="TSX works"/>\n\n<Nested/>\n\n' +
+      "text ".repeat(4000);
+    const result = await bundleProject({ root, file, source });
+    assert.deepEqual(result.engines, ["rust"]);
+    assert.match(result.js, /TSX works/);
+    assert.match(result.js, /Nested/);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});

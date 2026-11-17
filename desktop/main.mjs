@@ -80,7 +80,12 @@ let window,
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "inkstone",
-    privileges: { standard: true, secure: true, supportFetchAPI: true },
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
   },
   { scheme: "inkstone-preview", privileges: { standard: true, secure: true } },
 ]);

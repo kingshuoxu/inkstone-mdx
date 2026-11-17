@@ -400,5 +400,11 @@ test("Rust chunk failure falls back without losing source or preview", async ({
     "data-engine",
     "javascript",
   );
-  await expect(page.locator(".cm-content")).toContainText("Fallback preserved");
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => JSON.parse(localStorage.getItem("inkstone.draft.v1")).source,
+      ),
+    )
+    .toBe(source);
 });
