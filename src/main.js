@@ -1,3 +1,11 @@
+import { Compartment, EditorState } from "@codemirror/state";
+import {
+  LANGUAGE_KEY,
+  initialLanguage,
+  translate,
+  createUITranslations,
+  editorPhrases,
+} from "./i18n.js";
 import { EditorView, basicSetup } from "codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { sample } from "./sample.js";
@@ -6,6 +14,16 @@ import { previewDocument } from "./sandbox.js";
 import runtime from "./runtime.generated.txt?raw";
 import "./style.css";
 const desktop = window.inkstoneDesktop;
+let preferenceStorage;
+try {
+  preferenceStorage = localStorage;
+} catch {}
+let language = initialLanguage(preferenceStorage, navigator.language);
+const t = (key, values) => translate(language, key, values);
+const languageConfig = new Compartment();
+const translations = createUITranslations(document.body, () => language);
+const ui = (selector, key, values) =>
+  translations.text($(selector), key, values);
 let project = null;
 const $ = (s) => document.querySelector(s);
 let draft;
@@ -24,25 +42,33 @@ let source = draft?.source ?? sample,
   revision = 0;
 $("#app").innerHTML =
   `<aside class="sidebar"><a class="brand" href="#" aria-label="Inkstone home"><span class="brand-mark">i.</span>inkstone<span class="beta">MDX</span></a><div class="section-label">WORKSPACE</div><div class="file-item"><span>◈</span><span id="side-name"></span><i id="dirty-dot"></i></div><button id="open-side" class="sidebar-button">＋ Open a document</button><div class="sidebar-bottom"><div class="leaf">❧</div><strong>A place for your next idea.</strong><p>Plain text. Live components.<br>A little room to think.</p><button id="help">Components & help ↗</button><div class="local"><span></span> Local workspace</div></div></aside><main class="workspace"><header><div class="breadcrumb">Workspace <span>/</span> <strong id="file-name"></strong></div><div class="actions"><button id="open">Open <kbd>⌘ O</kbd></button><button id="copy">Save a copy</button><button id="save" class="primary">Save <kbd>⌘ S</kbd></button></div></header><section class="workspace-title"><div><div class="eyebrow">MAKE ROOM FOR YOUR IDEAS</div><h1>Your words, with possibility.</h1></div><div class="view-toggle" role="group" aria-label="Workspace view"><button data-view="source">Source</button><button data-view="split" aria-pressed="true">Split</button><button data-view="preview">Preview</button></div></section><div id="notice" role="status" hidden></div><div class="panes" data-mode="split"><section class="source-pane"><div class="pane-head"><span><b>◧</b> SOURCE</span><span>MDX <i>·</i> UTF-8</span></div><div id="editor"></div></section><section class="preview-pane"><div class="pane-head"><span><b>◉</b> LIVE PREVIEW</span><span id="compile-status">Preparing…</span><button id="pause">Pause</button></div><div id="preview-error" role="alert" hidden></div><div id="preview"></div></section></div><footer><span id="stats"></span><span id="draft-status"></span><span>Sandboxed preview <b>◇</b></span></footer></main><input type="file" id="file-input" accept=".mdx,.md,.markdown,text/plain" hidden><dialog><button id="close-help" aria-label="Close help">×</button><div class="eyebrow">A LITTLE MORE POSSIBILITY</div><h2>Markdown meets components.</h2><p>Use Markdown, GFM tables, JSX, and JavaScript expressions. Built-in components require no imports:</p><pre>&lt;Callout title="Note" tone="warning"&gt;Text&lt;/Callout&gt;\n&lt;Badge&gt;New&lt;/Badge&gt;\n&lt;Card title="Idea"&gt;Content&lt;/Card&gt;\n&lt;Counter /&gt;</pre><p>Imports and exports are unsupported. Preview resets component state after each compile. Remote assets are blocked; data images work.</p><p>The preview has an opaque origin with no file handles or app bridge. Executable MDX can still hang its browser tab or navigate its own frame: only run code you trust. Pause stops previews while you edit.</p><p>Save overwrites only a file you selected, with a conflict check. Unsupported browsers download a copy. Recovery drafts are stored in this browser; they are not a backup. Avoid simultaneous editing in multiple tabs.</p></dialog>`;
-function notice(text) {
+const languageLabel = document.createElement("label");
+languageLabel.className = "language-control";
+languageLabel.innerHTML =
+  '<span>Interface language</span><select id="language" aria-label="Interface language"><option value="zh-CN">简体中文</option><option value="en">English</option></select>';
+$(".actions").prepend(languageLabel);
+translations.register();
+function notice(text, values) {
   $("#notice").hidden = !text;
-  $("#notice").textContent = text;
+  ui("#notice", text, values);
 }
 function refresh() {
   $("#file-name").textContent = name;
   $("#side-name").textContent = name;
   $("#dirty-dot").style.visibility = dirty ? "visible" : "hidden";
-  $("#stats").textContent =
-    `${source.trim().split(/\s+/).filter(Boolean).length} words  ·  ${source.split("\n").length} lines`;
+  ui("#stats", "{words} words  ·  {lines} lines", {
+    words: source.trim().split(/\s+/).filter(Boolean).length,
+    lines: source.split("\n").length,
+  });
   document.title = `${dirty ? "• " : ""}${name} — Inkstone`;
 }
 function backup() {
   try {
     writeDraft(localStorage, source, name);
-    $("#draft-status").textContent = "Recovery draft saved locally";
+    ui("#draft-status", "Recovery draft saved locally");
     return true;
   } catch {
-    $("#draft-status").textContent = "Recovery unavailable — save your file";
+    ui("#draft-status", "Recovery unavailable — save your file");
     notice(
       "Browser storage is unavailable or full. Save a copy now to protect your work.",
     );
@@ -57,8 +83,8 @@ function pauseUntrustedPreview() {
   schedule();
   $("#preview").replaceChildren();
   desktop?.clearPreview();
-  $("#pause").textContent = "Run preview";
-  $("#compile-status").textContent = "Paused · untrusted document";
+  ui("#pause", "Run preview");
+  ui("#compile-status", "Paused · untrusted document");
 }
 function schedule() {
   clearTimeout(timer);
@@ -66,7 +92,7 @@ function schedule() {
   clearTimeout(timeout);
   revision++;
   if (paused) return;
-  $("#compile-status").textContent = "Waiting…";
+  ui("#compile-status", "Waiting…");
   timer = setTimeout(run, 250);
 }
 async function showPreview(html, id, ms) {
@@ -74,24 +100,24 @@ async function showPreview(html, id, ms) {
   if (id !== revision || paused) return;
   $("#preview-error").hidden = true;
   const frame = document.createElement("iframe");
-  frame.title = "MDX preview";
+  frame.title = t("MDX preview");
   frame.setAttribute("sandbox", "allow-scripts");
   frame.setAttribute("referrerpolicy", "no-referrer");
   if (url) frame.src = url;
   else frame.srcdoc = html;
   $("#preview").replaceChildren(frame);
-  $("#compile-status").textContent = `${Math.round(ms)} ms compile`;
+  ui("#compile-status", "{ms} ms compile", { ms: Math.round(ms) });
 }
 async function run() {
   const id = revision;
-  $("#compile-status").textContent = "Compiling…";
+  ui("#compile-status", "Compiling…");
   if (desktop && project) {
     try {
       const result = await desktop.compile(source);
       if (id !== revision || paused) return;
       const cssSetup = `const style=document.createElement('style');style.textContent=${JSON.stringify(result.css)};document.head.append(style);`;
       await showPreview(
-        previewDocument(cssSetup + result.js, ""),
+        previewDocument(cssSetup + result.js, "", language),
         id,
         result.ms,
       );
@@ -118,11 +144,13 @@ async function run() {
       showError(data.error);
       return;
     }
-    showPreview(previewDocument(runtime, data.code), id, data.ms).catch(
-      (error) => {
-        if (id === revision) showError(error.message);
-      },
-    );
+    showPreview(
+      previewDocument(runtime, data.code, language),
+      id,
+      data.ms,
+    ).catch((error) => {
+      if (id === revision) showError(error.message);
+    });
   };
   active.onerror = () => {
     clearTimeout(timeout);
@@ -133,8 +161,10 @@ async function run() {
 }
 function showError(error) {
   $("#preview-error").hidden = false;
-  $("#preview-error").textContent = error;
-  $("#compile-status").textContent = "Preview error · last good view";
+  ui("#preview-error", "Preview error: {error}", {
+    error: error,
+  });
+  ui("#compile-status", "Preview error · last good view");
 }
 const editor = new EditorView({
   doc: source,
@@ -143,7 +173,10 @@ const editor = new EditorView({
     basicSetup,
     markdown(),
     EditorView.lineWrapping,
-    EditorView.contentAttributes.of({ "aria-label": "MDX source editor" }),
+    languageConfig.of([
+      EditorState.phrases.of(language === "zh-CN" ? editorPhrases : {}),
+      EditorView.contentAttributes.of({ "aria-label": t("MDX source editor") }),
+    ]),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         source = update.state.doc.toString();
@@ -159,7 +192,9 @@ function canReplace() {
   return (
     !dirty ||
     confirm(
-      "Replace this document? Save a copy first if you need to keep your current changes.",
+      t(
+        "Replace this document? Save a copy first if you need to keep your current changes.",
+      ),
     )
   );
 }
@@ -201,7 +236,7 @@ async function open() {
       const [h] = await showOpenFilePicker({
         types: [
           {
-            description: "MDX documents",
+            description: t("MDX documents"),
             accept: { "text/plain": [".mdx", ".md", ".markdown"] },
           },
         ],
@@ -210,7 +245,8 @@ async function open() {
       await load(await h.getFile(), h);
     } else $("#file-input").click();
   } catch (e) {
-    if (e.name !== "AbortError") notice("Could not open: " + e.message);
+    if (e.name !== "AbortError")
+      notice("Could not open: {error}", { error: e.message });
   }
 }
 $("#file-input").onchange = async (e) => {
@@ -248,7 +284,10 @@ async function save(copy = false) {
       target = await showSaveFilePicker({
         suggestedName: name,
         types: [
-          { description: "MDX document", accept: { "text/plain": [".mdx"] } },
+          {
+            description: t("MDX document"),
+            accept: { "text/plain": [".mdx"] },
+          },
         ],
       });
       const file = await target.getFile();
@@ -279,9 +318,9 @@ async function save(copy = false) {
     );
   } catch (e) {
     if (e.name !== "AbortError")
-      notice(
-        "Save failed: " + e.message + " Your source remains in the editor.",
-      );
+      notice("Save failed: {error} Your source remains in the editor.", {
+        error: e.message,
+      });
   } finally {
     busy = false;
     $("#save").disabled = false;
@@ -296,14 +335,16 @@ $("#pause").onclick = () => {
   if (paused && requiresTrust) {
     if (
       !confirm(
-        "Run this document's JavaScript? Only continue for trusted MDX. The sandbox blocks app access but cannot prevent the document from freezing this tab or navigating its own frame.",
+        t(
+          "Run this document's JavaScript? Only continue for trusted MDX. The sandbox blocks app access but cannot prevent the document from freezing this tab or navigating its own frame.",
+        ),
       )
     )
       return;
     requiresTrust = false;
   }
   paused = !paused;
-  $("#pause").textContent = paused ? "Resume" : "Pause";
+  ui("#pause", paused ? "Resume" : "Pause");
   if (!paused)
     notice(
       "Preview is running trusted JavaScript. Pause to stop subsequent execution.",
@@ -311,7 +352,7 @@ $("#pause").onclick = () => {
   schedule();
   if (paused) {
     $("#preview").replaceChildren();
-    $("#compile-status").textContent = "Paused";
+    ui("#compile-status", "Paused");
     desktop?.clearPreview();
   }
 };
@@ -350,6 +391,7 @@ if (desktop) {
   controls.innerHTML =
     '<button id="project-open">Open project</button><button id="project-rebuild" hidden>Rebuild</button><button id="project-revoke" hidden>Revoke trust</button><span id="project-status">No trusted workspace</span>';
   $(".workspace").insertBefore(controls, $(".workspace-title"));
+  translations.register(controls);
   $("#project-open").onclick = async () => {
     try {
       if (!canReplace()) return;
@@ -357,7 +399,7 @@ if (desktop) {
       if (!result) return;
       project = result.project;
       pauseUntrustedPreview();
-      $("#project-status").textContent = `Trusted this session: ${project}`;
+      ui("#project-status", "Trusted this session: {project}", { project });
       $("#project-revoke").hidden = false;
       $("#project-rebuild").hidden = false;
       notice(
@@ -371,7 +413,7 @@ if (desktop) {
     await desktop.revoke();
     project = null;
     pauseUntrustedPreview();
-    $("#project-status").textContent = "No trusted workspace";
+    ui("#project-status", "No trusted workspace");
     $("#project-revoke").hidden = true;
     $("#project-rebuild").hidden = true;
     notice(
@@ -383,6 +425,33 @@ if (desktop) {
     else notice("Choose Run preview to compile this trusted document.");
   };
 }
+function applyLanguage() {
+  document.documentElement.lang = language;
+  $("#language").value = language;
+  translations.render();
+  editor.dispatch({
+    effects: languageConfig.reconfigure([
+      EditorState.phrases.of(language === "zh-CN" ? editorPhrases : {}),
+      EditorView.contentAttributes.of({ "aria-label": t("MDX source editor") }),
+    ]),
+  });
+  desktop?.setLanguage(language).catch((error) => notice(error.message));
+  refresh();
+}
+$("#language").onchange = () => {
+  language = $("#language").value;
+  applyLanguage();
+  try {
+    if (!preferenceStorage) throw Error("Storage unavailable");
+    preferenceStorage.setItem(LANGUAGE_KEY, language);
+  } catch {
+    notice(
+      "Language preference could not be saved. This selection applies until reload.",
+    );
+  }
+  if (!paused) schedule();
+};
+applyLanguage();
 refresh();
 if (draft) pauseUntrustedPreview();
 else schedule();

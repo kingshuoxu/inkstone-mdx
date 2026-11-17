@@ -211,3 +211,77 @@ test("opened files require explicit trust before executing preview", async ({
     page.frameLocator("iframe").getByRole("heading", { level: 1 }),
   ).toHaveText("Opened");
 });
+
+test("Chinese UI switches live, preserves source and undo, and persists after reload", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  page.on("dialog", (d) => d.accept());
+  await replace(page, "# 中文文档\n\n<Badge>中文标签</Badge>\n\n<Counter />");
+  await page.locator("#language").selectOption("zh-CN");
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  await expect(
+    page.getByRole("textbox", { name: "MDX 源码编辑器" }),
+  ).toContainText("中文文档");
+  await expect(
+    page.getByRole("heading", { name: "让文字，拥有更多可能。" }),
+  ).toBeVisible();
+  await expect(
+    page.frameLocator("iframe").getByRole("button", { name: "已点击 0 次" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "组件与帮助 ↗" }).click();
+  await expect(
+    page.getByRole("heading", { name: "让 Markdown 遇见组件。" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "关闭帮助" }).click();
+  await page.screenshot({ path: `docs/chinese-${testInfo.project.name}.png` });
+  const editor = page.getByRole("textbox", { name: "MDX 源码编辑器" });
+  await editor.click();
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.insertText("\n\n新增文字");
+  await page.locator("#language").selectOption("en");
+  await page.getByRole("textbox", { name: "MDX source editor" }).click();
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(
+    page.getByRole("textbox", { name: "MDX source editor" }),
+  ).not.toContainText("新增文字");
+  await page.locator("#language").selectOption("zh-CN");
+  await page.reload();
+  await expect(page.locator("#language")).toHaveValue("zh-CN");
+  await expect(page.locator("#notice")).toContainText("已恢复上次的草稿");
+  await expect(page.locator("iframe")).toHaveCount(0);
+  await page.getByRole("button", { name: "运行预览" }).click();
+  await replace(page, "import X from './missing.jsx'\n\n<X />");
+  await expect(page.locator("#preview-error")).toContainText("网页版不支持");
+  await page.locator("#language").selectOption("en");
+  await expect(page.locator("#preview-error")).toContainText(
+    "Imports and exports",
+  );
+  await page.locator("#language").selectOption("zh-CN");
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    390,
+  );
+  await page.screenshot({
+    path: `docs/chinese-mobile-${testInfo.project.name}.png`,
+  });
+});
+test("Chinese preference follows browser locale and survives unavailable preference storage", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ locale: "zh-CN" });
+  const page = await context.newPage();
+  await page.goto("http://127.0.0.1:4174");
+  await expect(page.locator("#language")).toHaveValue("zh-CN");
+  await page.evaluate(() => {
+    Storage.prototype.setItem = () => {
+      throw Error("quota");
+    };
+  });
+  await page.locator("#language").selectOption("en");
+  await expect(page.locator("#notice")).toContainText(
+    "Language preference could not be saved",
+  );
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await context.close();
+});

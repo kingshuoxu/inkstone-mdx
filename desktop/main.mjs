@@ -5,6 +5,7 @@ import {
   ipcMain,
   protocol,
   session,
+  Menu,
 } from "electron";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -12,6 +13,56 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { Worker } from "node:worker_threads";
 import { atomicSave, readDocument, checkedPath, isInside } from "./files.mjs";
+import { normalizeLanguage, translate, translateError } from "../src/i18n.js";
+let language = "en";
+const t = (key) => translate(language, key);
+function updateMenu() {
+  const role = (label, role) => ({ label: t(label), role });
+  const template = [
+    {
+      label: t("File"),
+      submenu: [role("Close window", "close"), role("Quit", "quit")],
+    },
+    {
+      label: t("Edit"),
+      submenu: [
+        role("Undo", "undo"),
+        role("Redo", "redo"),
+        { type: "separator" },
+        role("Cut", "cut"),
+        role("Copy", "copy"),
+        role("Paste", "paste"),
+        role("Select all", "selectAll"),
+      ],
+    },
+    {
+      label: t("View"),
+      submenu: [
+        role("Reload", "reload"),
+        role("Reset zoom", "resetZoom"),
+        role("Zoom in", "zoomIn"),
+        role("Zoom out", "zoomOut"),
+        role("Toggle fullscreen", "togglefullscreen"),
+      ],
+    },
+    {
+      label: t("Window"),
+      submenu: [role("Minimize", "minimize"), role("Close window", "close")],
+    },
+  ];
+  if (process.platform === "darwin")
+    template.unshift({
+      label: "Inkstone MDX",
+      submenu: [
+        role("About Inkstone MDX", "about"),
+        role("Hide Inkstone MDX", "hide"),
+        role("Hide others", "hideOthers"),
+        role("Show all", "unhide"),
+        role("Quit", "quit"),
+      ],
+    });
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
 const appRoot = fileURLToPath(new URL("..", import.meta.url));
 const HOST = "inkstone://app/index.html";
 let window,
@@ -50,14 +101,22 @@ function checkedSource(source) {
 function register(name, fn) {
   ipcMain.handle(name, async (event, ...args) => {
     validate(event);
-    return fn(...args);
+    try {
+      return await fn(...args);
+    } catch (error) {
+      throw Error(translateError(language, error.message));
+    }
   });
 }
 async function pickDocument() {
   const r = await dialog.showOpenDialog(window, {
     properties: ["openFile"],
+    title: t("Open"),
+    buttonLabel: t("Open"),
     defaultPath: workspace || undefined,
-    filters: [{ name: "MDX documents", extensions: ["mdx", "md", "markdown"] }],
+    filters: [
+      { name: t("MDX documents"), extensions: ["mdx", "md", "markdown"] },
+    ],
   });
   if (r.canceled) return null;
   const next = await readDocument(r.filePaths[0]);
@@ -72,6 +131,8 @@ async function pickDocument() {
 }
 async function boot() {
   await app.whenReady();
+  language = normalizeLanguage(app.getLocale());
+  updateMenu();
   const ses = session.defaultSession;
   ses.setPermissionRequestHandler((_wc, _permission, callback) =>
     callback(false),
@@ -159,28 +220,37 @@ async function boot() {
   window.webContents.on("will-prevent-unload", (event) => {
     const response = dialog.showMessageBoxSync(window, {
       type: "warning",
-      buttons: ["Keep editing", "Discard and continue"],
+      buttons: [t("Keep editing"), t("Discard and continue")],
       defaultId: 0,
       cancelId: 0,
-      message: "This document has unsaved changes.",
-      detail:
+      message: t("This document has unsaved changes."),
+      detail: t(
         "Save your file or keep editing. A browser recovery draft is not a backup.",
+      ),
     });
     if (response === 1) event.preventDefault();
+  });
+  register("settings:language", (value) => {
+    if (!["en", "zh-CN"].includes(value)) throw Error("Invalid language");
+    language = value;
+    updateMenu();
+    return language;
   });
   register("document:open", pickDocument);
   register("workspace:open", async () => {
     const r = await dialog.showOpenDialog(window, {
       properties: ["openDirectory"],
+      title: t("Open project"),
+      buttonLabel: t("Open project"),
     });
     if (r.canceled) return null;
     const root = await fs.realpath(r.filePaths[0]);
     const trust = await dialog.showMessageBox(window, {
       type: "warning",
-      buttons: ["Cancel", "Trust for this session"],
+      buttons: [t("Cancel"), t("Trust for this session")],
       defaultId: 0,
       cancelId: 0,
-      message: "Trust this workspace and its dependencies?",
+      message: t("Trust this workspace and its dependencies?"),
       detail:
         root +
         "\n\nImports may read files anywhere inside this folder, including installed dependencies, and execute JavaScript in the preview. Only trust code you reviewed. No install scripts or project build plugins are run. Preview code may consume CPU/memory. Trust ends when you revoke it or close the app.",
@@ -203,7 +273,9 @@ async function boot() {
     if (copy || !target) {
       const r = await dialog.showSaveDialog(window, {
         defaultPath: target || "untitled.mdx",
-        filters: [{ name: "MDX document", extensions: ["mdx"] }],
+        title: t(copy ? "Save a copy" : "Save"),
+        buttonLabel: t("Save"),
+        filters: [{ name: t("MDX document"), extensions: ["mdx"] }],
       });
       if (r.canceled) return null;
       target = r.filePath;

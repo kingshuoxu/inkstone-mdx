@@ -515,3 +515,38 @@ dialog pre {
   color: #607258;
   margin-left: auto;
 }
+
+.language-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.language-control > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.language-control select {
+  font: inherit;
+  color: #304d3d;
+  border: 1px solid #dddcd3;
+  background: #f7f5f0;
+  border-radius: 7px;
+  padding: 8px;
+  max-width: 110px;
+}
+@media (max-width: 650px) {
+  header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .actions {
+    flex-wrap: wrap;
+  }
+  .language-control select {
+    max-width: 96px;
+    padding: 7px 4px;
+  }
+}

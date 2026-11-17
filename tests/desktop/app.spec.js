@@ -132,7 +132,7 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
       frame.getByRole("button", { name: "Project component: 0" }),
     ).toBeVisible();
     expect(requests).toBe(0);
-    const editor = page.getByRole("textbox", { name: "MDX source editor" });
+    const editor = page.locator(".cm-content");
     async function replace(text) {
       await editor.click();
       await page.keyboard.press("ControlOrMeta+a");
@@ -195,6 +195,54 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
     ).toBe(true);
     await page.getByRole("button", { name: "Run preview" }).click();
     await expect(page.locator("#preview-error")).toBeVisible();
+    await page.locator("#language").selectOption("zh-CN");
+    await expect(page.locator("#preview-error")).toContainText("网页版不支持");
+    await expect
+      .poll(() =>
+        app.evaluate(({ Menu }) =>
+          Menu.getApplicationMenu().items.map((item) => item.label),
+        ),
+      )
+      .toContain("文件");
+    await app.evaluate(({ dialog }) => {
+      globalThis.lastTrust = null;
+      globalThis.lastSave = null;
+      dialog.showMessageBox = async (_w, options) => {
+        globalThis.lastTrust = options;
+        return { response: 1 };
+      };
+      dialog.showSaveDialog = async (_w, options) => {
+        globalThis.lastSave = options;
+        return { canceled: true };
+      };
+    });
+    await page.locator("#project-open").click();
+    await expect(page.locator("#project-status")).toContainText(
+      "本次会话已信任",
+    );
+    expect(await app.evaluate(() => globalThis.lastTrust.message)).toBe(
+      "是否信任此工作区及其依赖？",
+    );
+    await page.locator("#open").click();
+    await replace(source + "\n\n中文保存验证");
+    await page.getByRole("button", { name: "运行预览" }).click();
+    await expect(
+      page
+        .frameLocator("iframe")
+        .getByRole("button", { name: "Project component: 0" }),
+    ).toBeVisible();
+    await page.locator("#save").click();
+    await expect(page.locator("#notice")).toContainText("已保存到磁盘");
+    await page.locator("#copy").click();
+    expect(await app.evaluate(() => globalThis.lastSave.title)).toBe("另存为");
+    await page.screenshot({ path: "docs/desktop-chinese.png" });
+    await page.reload();
+    await expect(page.locator("#language")).toHaveValue("zh-CN");
+    await expect(page.locator("#notice")).toContainText("已恢复上次的草稿");
+    await page.locator("#language").selectOption("en");
+    await expect(
+      page.getByRole("textbox", { name: "MDX source editor" }),
+    ).toContainText("中文保存验证");
   } finally {
     await app.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows().forEach((w) => w.destroy()),

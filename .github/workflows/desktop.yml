@@ -43,5 +43,5 @@ jobs:
             release/*.exe
             release/*.dmg
             release/*.zip
-            docs/desktop-project.png
+            docs/desktop-*.png
             desktop-test-results/

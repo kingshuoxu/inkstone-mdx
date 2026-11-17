@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import * as runtime from "react/jsx-runtime";
 import {
   components,
+  previewText,
   Boundary,
   installErrorReporting,
 } from "./preview-shared.jsx";
@@ -15,7 +16,8 @@ try {
     </Boundary>,
   );
 } catch (e) {
-  document.getElementById("root").textContent = "Runtime error: " + e.message;
+  document.getElementById("root").textContent =
+    previewText("Runtime error: ", "运行时错误：") + e.message;
 }
 
 installErrorReporting();

@@ -19,6 +19,14 @@ npm run dev
 
 Open the localhost URL printed by Vite. `npm run build` creates `dist/`, which can be served by any static HTTP server. Opening `index.html` directly with `file://` does not work because the compiler is a module worker. No document data is sent to a server; dependencies are bundled locally. Development binds only to loopback.
 
+## Interface language
+
+Choose **简体中文 / English** in the top toolbar. The initial language follows the browser/system language (Chinese locales use Simplified Chinese); an explicit choice is saved locally and restored on reload. The choice changes application text, accessibility labels, CodeMirror search controls, built-in preview labels and desktop dialogs/menus. It does not translate your document or discard undo history. An active preview recompiles on a language change, resetting component state; a paused document stays paused. If preference storage is unavailable, the choice works for the current session and a warning appears.
+
+Third-party compiler/OS error details are retained verbatim after the localized application message. Native browser/OS file-picker chrome follows the operating system; it cannot all be controlled by the app. Chinese input-method composition across OS/IME combinations has not been exhaustively tested.
+
+简体中文：顶部可切换界面语言并保存偏好。切换不会翻译或覆盖文档内容；正在运行的预览会重新编译，已暂停的文档不会自动执行。
+
 ## Use
 
 - **Open** / Ctrl or Cmd + O opens `.mdx`, `.md`, or `.markdown` files. This is an MDX editor: `.md` files also use MDX syntax, so literal braces and angle brackets may need escaping.
@@ -47,6 +55,8 @@ The answer is {6 \* 7}.
 ```
 
 `Counter` demonstrates real React state, not a static JSX approximation. Component state resets after successful compilation. In the browser-only edition, imports and exports are explicitly rejected; arbitrary project components, package installation, relative assets, TypeScript, frontmatter and project resolution are not implemented. Built-ins are compiled into the preview runtime. Remote images/fonts/media are blocked; data images work. The preview limit is 500 KB (512,000 UTF-8 bytes), and opening files is limited to 5 MiB. Larger editor buffers can still be saved.
+
+See [size-limit rationale and measurements](docs/LIMITS.md) for why the 5 MiB file and 512,000-byte preview guards are retained. These are resource protections, not MDX format limits.
 
 ## Security model and limits
 

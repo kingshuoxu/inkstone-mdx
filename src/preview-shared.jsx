@@ -1,6 +1,12 @@
 import React from "react";
+export const previewText = (en, zh) =>
+  document.documentElement.lang === "zh-CN" ? zh : en;
 export const components = {
-  Callout: ({ children, title = "A note", tone = "note" }) => (
+  Callout: ({
+    children,
+    title = previewText("A note", "提示"),
+    tone = "note",
+  }) => (
     <aside className={"callout " + (tone === "warning" ? "warning" : "")}>
       <strong>{title}</strong>
       <div>{children}</div>
@@ -17,7 +23,7 @@ export const components = {
     const [n, set] = React.useState(0);
     return (
       <button className="counter" onClick={() => set(n + 1)}>
-        Clicked {n} times <span>＋</span>
+        {previewText(`Clicked ${n} times`, `已点击 ${n} 次`)} <span>＋</span>
       </button>
     );
   },
@@ -30,7 +36,8 @@ export class Boundary extends React.Component {
   render() {
     return this.state.error ? (
       <pre className="error">
-        Runtime error: {String(this.state.error.message)}
+        {previewText("Runtime error: ", "运行时错误：")}
+        {String(this.state.error.message)}
       </pre>
     ) : (
       this.props.children
@@ -43,7 +50,8 @@ export function installErrorReporting() {
   function reportAsyncError(message) {
     const error = document.createElement("pre");
     error.className = "error";
-    error.textContent = "Runtime error: " + message;
+    error.textContent =
+      previewText("Runtime error: ", "运行时错误：") + message;
     document.body.append(error);
   }
   window.addEventListener("error", (event) => reportAsyncError(event.message));

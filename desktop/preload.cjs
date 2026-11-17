@@ -4,6 +4,8 @@ if (process.isMainFrame)
   contextBridge.exposeInMainWorld(
     "inkstoneDesktop",
     Object.freeze({
+      setLanguage: (language) =>
+        ipcRenderer.invoke("settings:language", language),
       open: () => ipcRenderer.invoke("document:open"),
       project: () => ipcRenderer.invoke("workspace:open"),
       revoke: () => ipcRenderer.invoke("workspace:revoke"),
