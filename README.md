@@ -2,7 +2,7 @@
 
 A quiet, source-first MDX workspace. Open local documents, edit Markdown and JSX, and see real React components in an isolated preview. MIT licensed, with no accounts, backend, telemetry, paid services, or document uploads.
 
-**Status: early implementation. Build and core tests pass. Browser tests and visual QA are supplied but not verified in the authoring environment (Chromium process/socket restrictions). Do not treat this version as a hardened hostile-code execution service.**
+**Status: early implementation. Core tests, the built-worker check, and Chromium browser tests for both development and production builds pass on GitHub Actions. Desktop and mobile screenshots have been visually reviewed. Do not treat this version as a hardened hostile-code execution service.**
 
 ## Run locally
 
@@ -62,10 +62,11 @@ npm run bench                  # repeatable compiler benchmark
 npx playwright install chromium
 npm run test:e2e                # UI, files, recovery, isolation, screenshots, input probe
 npm run build
+npm run test:worker             # real built worker, without DOM globals
 npm run format:check
 ```
 
-Set `CHROMIUM_PATH=/path/to/chromium` to use a system Chromium. End-to-end tests produce `docs/workspace.png` and `docs/mobile.png`. The input probe uses synthetic insertion to next animation frame; it is not a hardware typing latency or INP measurement. The included CI runs tests and build on pushes and pull requests; no deployment is configured.
+Set `CHROMIUM_PATH=/path/to/chromium` to use a system Chromium. End-to-end tests produce `docs/workspace-{development,production}.png` and `docs/mobile-{development,production}.png`. The input probe opens a 105.6 KB fixture, inserts 20 characters through Playwright keyboard input, and measures each beforeinput event to the next animation frame with preview paused. It verifies the resulting recovery text. This is not hardware typing latency or INP. The included CI runs tests and build on pushes and pull requests; no deployment is configured.
 
 See [validation report](docs/VALIDATION.md) for measured results and outstanding checks.
 
