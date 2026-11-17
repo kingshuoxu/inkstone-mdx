@@ -356,3 +356,30 @@ test("large pending recovery flushes before immediate reload", async ({
   ).toBe(source);
   await expect(page.locator("iframe")).toHaveCount(0);
 });
+
+test("identical queued recovery flush is not a false cross-tab conflict", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await replace(page, "# current");
+  await page.evaluate(() => {
+    const draft = JSON.parse(localStorage.getItem("inkstone.draft.v1"));
+    draft.updated++;
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "inkstone.draft.v1",
+        newValue: JSON.stringify(draft),
+      }),
+    );
+  });
+  await expect(page.locator("#notice")).not.toContainText("Another tab");
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "inkstone.draft.v1",
+        newValue: JSON.stringify({ source: "# other", name: "other.mdx" }),
+      }),
+    ),
+  );
+  await expect(page.locator("#notice")).toContainText("Another tab");
+});

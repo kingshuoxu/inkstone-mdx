@@ -405,10 +405,14 @@ window.addEventListener("beforeunload", (e) => {
   }
 });
 window.addEventListener("storage", (e) => {
-  if (e.key === "inkstone.draft.v1")
+  if (e.key === "inkstone.draft.v1") {
+    const incoming = readDraft({ getItem: () => e.newValue });
+    // A reload may receive a queued flush from the outgoing document.
+    if (incoming?.source === source && incoming.name === name) return;
     notice(
       "Another tab changed the recovery draft. Save your document to disk to keep this version.",
     );
+  }
 });
 if (desktop) {
   const controls = document.createElement("div");
