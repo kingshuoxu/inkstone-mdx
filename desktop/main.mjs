@@ -32,7 +32,7 @@ function validate(event) {
     !window ||
     event.sender !== window.webContents ||
     event.senderFrame !== window.webContents.mainFrame ||
-    event.senderFrame.url !== HOST
+    event.senderFrame.url.split("#")[0] !== HOST
   )
     throw Error("Only the application main frame may use this operation.");
 }
@@ -151,20 +151,22 @@ async function boot() {
   window.webContents.on("will-attach-webview", (event) =>
     event.preventDefault(),
   );
-  window.webContents.on("will-prevent-unload", async () => {
-    const result = await dialog.showMessageBox(window, {
+  window.webContents.on("did-navigate", () => {
+    cancelCompile();
+    workspace = null;
+    document = null;
+  });
+  window.webContents.on("will-prevent-unload", (event) => {
+    const response = dialog.showMessageBoxSync(window, {
       type: "warning",
-      buttons: ["Keep editing", "Discard and close"],
+      buttons: ["Keep editing", "Discard and continue"],
       defaultId: 0,
       cancelId: 0,
       message: "This document has unsaved changes.",
       detail:
         "Save your file or keep editing. A browser recovery draft is not a backup.",
     });
-    if (result.response === 1) {
-      window.destroy();
-      app.quit();
-    }
+    if (response === 1) event.preventDefault();
   });
   register("document:open", pickDocument);
   register("workspace:open", async () => {

@@ -18,7 +18,7 @@ npm run desktop
 2. Choose **Open**, select an MDX file inside that folder, inspect it, and choose **Run preview**.
 3. Imports such as `./Welcome.jsx` and installed browser-compatible packages such as `clsx` are bundled. The included `examples/project` demonstrates a stateful local component importing `clsx`.
 4. Edit and save normally. **Rebuild** picks up changes to imported files. Dependency files are not watched automatically.
-5. **Revoke trust** clears the preview and stops project compilation. Trust expires when the app exits. Source text is retained.
+5. **Revoke trust** clears the preview and stops project compilation. Trust and the native file association expire on host reload or when the app exits. Source text is retained.
 
 Install dependencies yourself after reviewing them. Inkstone never runs npm, installation hooks, project esbuild/Vite plugins or project configuration scripts. The example install command deliberately disables scripts. Dependencies must physically reside within the selected workspace: pnpm stores and monorepo symlinks outside it are rejected. Choose a suitable common root only if you trust everything inside it.
 

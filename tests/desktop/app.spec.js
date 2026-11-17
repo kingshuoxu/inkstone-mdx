@@ -33,6 +33,7 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
           ],
         });
         dialog.showMessageBox = async () => ({ response: 0 });
+        dialog.showMessageBoxSync = () => 1;
         dialog.showSaveDialog = async () => ({
           canceled: false,
           filePath: file.replace(/index\.mdx$/, "recovered.mdx"),
@@ -54,6 +55,7 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
         .frameLocator("iframe")
         .getByRole("heading", { name: "A little space to think." }),
     ).toBeVisible();
+    await page.getByRole("link", { name: "Inkstone home" }).click();
     await page.locator("#project-open").click();
     await expect(page.locator("#project-status")).toContainText(
       "No trusted workspace",
@@ -124,7 +126,7 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
       document.body.append(a);
     }, probeURL);
     await frame.getByRole("link", { name: "Navigation probe" }).click();
-    expect(page.url()).toBe("inkstone://app/index.html");
+    expect(page.url().split("#")[0]).toBe("inkstone://app/index.html");
     await page.locator("#project-rebuild").click();
     await expect(
       frame.getByRole("button", { name: "Project component: 0" }),
@@ -146,7 +148,14 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
     expect(await fs.readFile(file, "utf8")).toBe("external version");
     await page.locator("#copy").click();
     await expect
-      .poll(() => fs.readFile(path.join(project, "recovered.mdx"), "utf8"))
+      .poll(async () => {
+        try {
+          return await fs.readFile(path.join(project, "recovered.mdx"), "utf8");
+        } catch (e) {
+          if (e.code === "ENOENT") return "";
+          throw e;
+        }
+      })
       .toContain("conflicting");
     expect(await fs.readFile(file, "utf8")).toBe("external version");
     await replace("import Nope from './missing.jsx'\n\n<Nope />");
@@ -156,6 +165,19 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
     await expect(
       frame.getByRole("button", { name: "Project component: 0" }),
     ).toBeVisible();
+    await page.reload();
+    await page.evaluate(() => {
+      window.confirm = () => true;
+    });
+    await expect(page.locator("iframe")).toHaveCount(0);
+    await expect(page.locator("#project-status")).toContainText(
+      "No trusted workspace",
+    );
+    await expect(editor).toContainText("Welcome");
+    await page.locator("#project-open").click();
+    await expect(page.locator("#project-status")).toContainText(
+      "Trusted this session",
+    );
     await page.locator("#project-revoke").click();
     await expect(page.locator("iframe")).toHaveCount(0);
     await expect(page.locator("#project-status")).toContainText(
