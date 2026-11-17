@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 for (const size of [10000, 100000])
   test(`live preview and input, dense ${size}`, async ({ page }, info) => {
+    page.on("dialog", (dialog) => dialog.accept()); // Known benchmark fixtures only.
     await page.goto("/");
     await expect(
       page.frameLocator("iframe").getByRole("heading", { level: 1 }).first(),

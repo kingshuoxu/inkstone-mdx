@@ -4,8 +4,13 @@ This edition is under active validation. It is not merged into `main`. Browser-o
 
 ## Start and build
 
+Source builds require Node/npm and a stable Rust toolchain; installed packages include the compiled core.
+
 ```sh
+rustup target add wasm32-unknown-unknown
+cargo install wasm-bindgen-cli --version 0.2.105 --locked
 npm ci
+npm run build:core
 npm ci --prefix examples/project --ignore-scripts
 npm run desktop
 ```

@@ -10,10 +10,13 @@ The draft desktop edition adds session-trusted local workspaces, relative compon
 
 ## Run locally
 
-Requires Node.js 22.12+ (tested with Node 24) and npm.
+Requires Node.js 22.12+ (tested with Node 24), npm and a stable Rust toolchain for source builds. Packaged desktop apps need no Rust installation.
 
 ```sh
+rustup target add wasm32-unknown-unknown
+cargo install wasm-bindgen-cli --version 0.2.105 --locked
 npm ci
+npm run build:core
 npm run dev
 ```
 
@@ -106,4 +109,4 @@ Before publication, all 22 archive files were checked for common credential patt
 
 ### Rust compilation core
 
-The MDX compiler now has a shared Rust/WASM path for larger documents, with JavaScript fallback for small documents, footnotes and compatibility/load failures. UI, files and project bundling remain JavaScript/Electron/esbuild. Before the existing development/build commands, install Rust with the `wasm32-unknown-unknown` target and `wasm-bindgen-cli` 0.2.105, then run `npm run build:core`. Packaged apps need no Rust toolchain. See [build and compatibility details](core/README.md) and [measured performance](docs/RUST-PERFORMANCE.md). Rust does not make executing arbitrary MDX safe; all existing trust boundaries and limits still apply.
+The MDX compiler now has a shared Rust/WASM path for larger documents, with JavaScript fallback for small documents, aligned tables, footnotes and compatibility/load failures. UI, files and project bundling remain JavaScript/Electron/esbuild. Before the existing development/build commands, install Rust with the `wasm32-unknown-unknown` target and `wasm-bindgen-cli` 0.2.105, then run `npm run build:core`. Packaged apps need no Rust toolchain. See [build and compatibility details](core/README.md) and [measured performance](docs/RUST-PERFORMANCE.md). Rust does not make executing arbitrary MDX safe; all existing trust boundaries and limits still apply.
