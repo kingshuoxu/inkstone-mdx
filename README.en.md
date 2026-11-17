@@ -6,7 +6,7 @@ A local-first, source-first MDX editor. Write Markdown and React components in a
 
 [简体中文](README.md) · [MIT License](LICENSE) · [Desktop guide](docs/DESKTOP.md) · [Validation](docs/EXTENDED-VALIDATION.md)
 
-> **Development preview:** this README describes `feat/rust-mdx-core`, currently in [Draft PR #3](https://github.com/kingshuoxu/inkstone-mdx/pull/3), not merged into `main` or formally released. Desktop packages are unsigned and macOS builds are not notarized. Only run trusted documents and projects.
+> **Development preview:** this README describes `main`; [PR #3](https://github.com/kingshuoxu/inkstone-mdx/pull/3) has been merged, but no formal release has been published. Desktop packages are unsigned and macOS builds are not notarized. Only run trusted documents and projects.
 
 ![Source editing alongside a live React preview](docs/screenshots/workspace-production.png)
 
@@ -58,10 +58,10 @@ Installed apps do not require Node or Rust. Packages are unsigned/not notarized;
 
 ### Run from source
 
-Requires Node.js **22.12+** (CI uses Node 24), npm, stable Rust and platform build tools. Check out the feature branch while these features remain unmerged:
+Requires Node.js **22.12+** (CI uses Node 24), npm, stable Rust and platform build tools. Check out the default main branch:
 
 ```sh
-git clone --branch feat/rust-mdx-core https://github.com/kingshuoxu/inkstone-mdx.git
+git clone https://github.com/kingshuoxu/inkstone-mdx.git
 cd inkstone-mdx
 rustup target add wasm32-unknown-unknown
 cargo install wasm-bindgen-cli --version 0.2.105 --locked
