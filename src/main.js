@@ -5,6 +5,8 @@ import { readDraft, writeDraft, saveHandle } from "./storage.js";
 import { previewDocument } from "./sandbox.js";
 import runtime from "./runtime.generated.txt?raw";
 import "./style.css";
+const desktop = window.inkstoneDesktop;
+let project = null;
 const $ = (s) => document.querySelector(s);
 let draft;
 try {
@@ -54,6 +56,7 @@ function pauseUntrustedPreview() {
   requiresTrust = true;
   schedule();
   $("#preview").replaceChildren();
+  desktop?.clearPreview();
   $("#pause").textContent = "Run preview";
   $("#compile-status").textContent = "Paused · untrusted document";
 }
@@ -66,9 +69,37 @@ function schedule() {
   $("#compile-status").textContent = "Waiting…";
   timer = setTimeout(run, 250);
 }
-function run() {
+async function showPreview(html, id, ms) {
+  const url = desktop ? await desktop.preview(html) : null;
+  if (id !== revision || paused) return;
+  $("#preview-error").hidden = true;
+  const frame = document.createElement("iframe");
+  frame.title = "MDX preview";
+  frame.setAttribute("sandbox", "allow-scripts");
+  frame.setAttribute("referrerpolicy", "no-referrer");
+  if (url) frame.src = url;
+  else frame.srcdoc = html;
+  $("#preview").replaceChildren(frame);
+  $("#compile-status").textContent = `${Math.round(ms)} ms compile`;
+}
+async function run() {
   const id = revision;
   $("#compile-status").textContent = "Compiling…";
+  if (desktop && project) {
+    try {
+      const result = await desktop.compile(source);
+      if (id !== revision || paused) return;
+      const cssSetup = `const style=document.createElement('style');style.textContent=${JSON.stringify(result.css)};document.head.append(style);`;
+      await showPreview(
+        previewDocument(cssSetup + result.js, ""),
+        id,
+        result.ms,
+      );
+    } catch (error) {
+      if (id === revision && !paused) showError(error.message);
+    }
+    return;
+  }
   worker = new Worker(new URL("./worker.js", import.meta.url), {
     type: "module",
   });
@@ -87,14 +118,11 @@ function run() {
       showError(data.error);
       return;
     }
-    $("#preview-error").hidden = true;
-    const frame = document.createElement("iframe");
-    frame.title = "MDX preview";
-    frame.setAttribute("sandbox", "allow-scripts");
-    frame.setAttribute("referrerpolicy", "no-referrer");
-    frame.srcdoc = previewDocument(runtime, data.code);
-    $("#preview").replaceChildren(frame);
-    $("#compile-status").textContent = `${Math.round(data.ms)} ms compile`;
+    showPreview(previewDocument(runtime, data.code), id, data.ms).catch(
+      (error) => {
+        if (id === revision) showError(error.message);
+      },
+    );
   };
   active.onerror = () => {
     clearTimeout(timeout);
@@ -158,7 +186,18 @@ async function load(file, newHandle = null) {
 async function open() {
   if (busy) return;
   try {
-    if ("showOpenFilePicker" in window) {
+    if (desktop) {
+      if (!canReplace()) return;
+      const file = await desktop.open();
+      if (file) {
+        dirty = false;
+        await load({
+          name: file.name,
+          size: new TextEncoder().encode(file.source).length,
+          text: async () => file.source,
+        });
+      }
+    } else if ("showOpenFilePicker" in window) {
       const [h] = await showOpenFilePicker({
         types: [
           {
@@ -189,6 +228,21 @@ async function save(copy = false) {
   $("#save").disabled = true;
   const snapshot = source;
   try {
+    if (desktop) {
+      const result = await desktop.save(snapshot, copy);
+      if (!result) return;
+      name = result.name;
+      baseline = snapshot;
+      dirty = source !== baseline;
+      backup();
+      refresh();
+      notice(
+        dirty
+          ? "Saved snapshot; newer edits still need saving."
+          : "Saved to disk.",
+      );
+      return;
+    }
     let target = copy ? null : handle;
     if (!target && "showSaveFilePicker" in window) {
       target = await showSaveFilePicker({
@@ -254,6 +308,7 @@ $("#pause").onclick = () => {
   if (paused) {
     $("#preview").replaceChildren();
     $("#compile-status").textContent = "Paused";
+    desktop?.clearPreview();
   }
 };
 for (const b of document.querySelectorAll("[data-view]"))
@@ -285,6 +340,45 @@ window.addEventListener("storage", (e) => {
       "Another tab changed the recovery draft. Save your document to disk to keep this version.",
     );
 });
+if (desktop) {
+  const controls = document.createElement("div");
+  controls.className = "desktop-controls";
+  controls.innerHTML =
+    '<button id="project-open">Open project</button><button id="project-rebuild" hidden>Rebuild</button><button id="project-revoke" hidden>Revoke trust</button><span id="project-status">No trusted workspace</span>';
+  $(".workspace").insertBefore(controls, $(".workspace-title"));
+  $("#project-open").onclick = async () => {
+    try {
+      if (!canReplace()) return;
+      const result = await desktop.project();
+      if (!result) return;
+      project = result.project;
+      pauseUntrustedPreview();
+      $("#project-status").textContent = `Trusted this session: ${project}`;
+      $("#project-revoke").hidden = false;
+      $("#project-rebuild").hidden = false;
+      notice(
+        "Workspace trusted for this session. Open an MDX file inside it, then choose Run preview. Installed browser dependencies are supported; no install scripts are run.",
+      );
+    } catch (e) {
+      notice(e.message);
+    }
+  };
+  $("#project-revoke").onclick = async () => {
+    await desktop.revoke();
+    project = null;
+    pauseUntrustedPreview();
+    $("#project-status").textContent = "No trusted workspace";
+    $("#project-revoke").hidden = true;
+    $("#project-rebuild").hidden = true;
+    notice(
+      "Workspace trust revoked. Source is preserved; project imports no longer compile.",
+    );
+  };
+  $("#project-rebuild").onclick = () => {
+    if (!paused) schedule();
+    else notice("Choose Run preview to compile this trusted document.");
+  };
+}
 refresh();
 if (draft) pauseUntrustedPreview();
 else schedule();
