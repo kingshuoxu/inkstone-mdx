@@ -28,6 +28,11 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
       },
       { project, file },
     );
+    await app.evaluate(({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows()[0];
+      win.show();
+      win.focus();
+    });
     const page = await app.firstWindow();
     await page.evaluate(() => {
       window.confirm = () => true;
@@ -83,6 +88,18 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
       node: "undefined",
       require: "undefined",
     });
+    const previewURL = preview.url();
+    await preview.evaluate(() => {
+      const a = document.createElement("a");
+      a.href = "https://example.com/escape";
+      a.textContent = "Navigation probe";
+      document.body.append(a);
+    });
+    await frame.getByRole("link", { name: "Navigation probe" }).click();
+    await expect(
+      frame.getByRole("button", { name: "Project component: 1" }),
+    ).toBeVisible();
+    expect(preview.url()).toBe(previewURL);
     const editor = page.getByRole("textbox", { name: "MDX source editor" });
     async function replace(text) {
       await editor.click();

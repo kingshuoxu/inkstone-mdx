@@ -41,11 +41,7 @@
   "build": {
     "appId": "io.inkstone.mdx",
     "productName": "Inkstone MDX",
-    "asar": true,
-    "asarUnpack": [
-      "node_modules/@esbuild/**",
-      "node_modules/esbuild/**"
-    ],
+    "asar": false,
     "files": [
       "dist/**",
       "desktop/**",

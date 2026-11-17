@@ -8,7 +8,7 @@ import {
 } from "electron";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { Worker } from "node:worker_threads";
 import { atomicSave, readDocument, checkedPath, isInside } from "./files.mjs";
@@ -145,9 +145,8 @@ async function boot() {
   });
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("will-navigate", (event) => event.preventDefault());
-  window.webContents.on("will-frame-navigate", (event, details) => {
-    const url = details?.url || event.url;
-    if (url !== HOST && url !== preview?.url) event.preventDefault();
+  window.webContents.on("will-frame-navigate", (event) => {
+    if (event.isMainFrame || event.url !== preview?.url) event.preventDefault();
   });
   window.webContents.on("will-attach-webview", (event) =>
     event.preventDefault(),
