@@ -1,3 +1,5 @@
+> Historical report: the full-preview change now allows 5 MiB source. Earlier 512,000-byte preview limits below describe the tested historical revision. See [full-preview validation](LARGE-PREVIEW.md).
+
 # Rust migration measurements
 
 This is a migration of MDX parsing, AST transforms and JavaScript generation, not a Rust rewrite of the UI, file layer, esbuild bundler or React renderer. See [core build and compatibility notes](../core/README.md).

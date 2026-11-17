@@ -63,6 +63,9 @@ let source = draft?.source ?? sample,
   timer,
   timeout,
   revision = 0;
+let compileBusy = false,
+  activeCompileId = -1,
+  queuedReady = false;
 let pendingFrame = null,
   renderTimer = null,
   previewStarted = 0;
@@ -136,24 +139,60 @@ function pauseUntrustedPreview() {
   ui("#pause", "Run preview");
   ui("#compile-status", "Paused · untrusted document");
 }
+function finishCompile(id) {
+  if (activeCompileId !== id) return false;
+  clearTimeout(timeout);
+  workerBusy = false;
+  compileBusy = false;
+  activeCompileId = -1;
+  if (queuedReady && !paused) {
+    queuedReady = false;
+    queueMicrotask(run);
+  }
+  return id === revision && !paused;
+}
 function schedule() {
   clearTimeout(timer);
   discardPendingPreview();
-  desktop?.cancelCompile?.().catch(() => {});
-  if (
-    workerBusy ||
-    paused ||
-    import.meta.env.VITE_COMPILER_ENGINE === "javascript"
-  ) {
-    worker?.terminate();
-    worker = null;
-    workerBusy = false;
-  }
-  clearTimeout(timeout);
   revision++;
-  if (paused) return;
-  ui("#compile-status", "Waiting…");
-  timer = setTimeout(run, source.length > LARGE_PREVIEW_BYTES ? 700 : 250);
+  queuedReady = false;
+  const large =
+    source.length > LARGE_PREVIEW_BYTES ||
+    previewBytes(source) > LARGE_PREVIEW_BYTES;
+  // Large-file edits are coalesced. Let one already-running compile settle,
+  // then compile only the latest revision after the quiet period.
+  // Pause/file changes and transitions to small documents cancel immediately.
+  if (paused || !large) {
+    desktop?.cancelCompile?.().catch(() => {});
+    if (
+      workerBusy ||
+      paused ||
+      import.meta.env.VITE_COMPILER_ENGINE === "javascript"
+    ) {
+      worker?.terminate();
+      worker = null;
+    }
+    clearTimeout(timeout);
+    workerBusy = false;
+    compileBusy = false;
+    activeCompileId = -1;
+  }
+  if (paused) {
+    $("#compile-status").dataset.state = "paused";
+    return;
+  }
+  $("#compile-status").dataset.state = "waiting";
+  ui(
+    "#compile-status",
+    large ? "Changes queued · refreshing after typing stops…" : "Waiting…",
+  );
+  timer = setTimeout(
+    () => {
+      if (compileBusy) queuedReady = true;
+      else run();
+    },
+    large ? 1500 : 250,
+  );
 }
 async function showPreview(previewRuntime, code, id, ms) {
   const token = crypto.randomUUID();
@@ -216,7 +255,14 @@ window.addEventListener("message", (event) => {
   ui("#compile-status", "{ms} ms compile", { ms: Math.round(pending.ms) });
 });
 async function run() {
+  if (paused) return;
+  if (compileBusy) {
+    queuedReady = true;
+    return;
+  }
   const id = revision;
+  compileBusy = true;
+  activeCompileId = id;
   previewStarted = performance.now();
   $("#compile-status").dataset.state = "compiling";
   $("#preview-error").hidden = true;
@@ -229,10 +275,11 @@ async function run() {
   if (desktop && project) {
     try {
       const result = await desktop.compile(source);
-      if (id !== revision || paused) return;
+      if (!finishCompile(id)) return;
       const cssSetup = `const style=document.createElement('style');style.textContent=${JSON.stringify(result.css)};document.head.append(style);`;
       await showPreview(cssSetup + result.js, "", id, result.ms);
     } catch (error) {
+      finishCompile(id);
       if (id === revision && !paused) showError(error.message);
     }
     return;
@@ -243,17 +290,16 @@ async function run() {
   const active = worker;
   workerBusy = true;
   timeout = setTimeout(() => {
+    if (active !== worker || activeCompileId !== id) return;
     active.terminate();
     worker = null;
-    workerBusy = false;
+    if (!finishCompile(id)) return;
     showError(
       "Compilation timed out. Source is safe; shorten the document or pause preview.",
     );
   }, previewTimeout(source));
   active.onmessage = ({ data }) => {
-    if (data.id !== revision) return;
-    clearTimeout(timeout);
-    workerBusy = false;
+    if (active !== worker || !finishCompile(data.id)) return;
     $("#compile-status").dataset.engine = data.engine || "error";
     if (data.error) {
       showError(data.error);
@@ -264,10 +310,10 @@ async function run() {
     });
   };
   active.onerror = () => {
-    clearTimeout(timeout);
+    if (active !== worker || activeCompileId !== id) return;
     active.terminate();
     worker = null;
-    workerBusy = false;
+    if (!finishCompile(id)) return;
     showError("Compiler failed. Edit to retry; source is safe.");
   };
   active.postMessage({ id, source });

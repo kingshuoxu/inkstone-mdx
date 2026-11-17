@@ -31,7 +31,7 @@ The normal working view below has preview enabled: source on the left, the rende
 
 ### Large-file editing test, not a preview demo
 
-> **Editing performance is not preview capacity.** The roughly 5 MiB fixture below exceeds the current **512,000 UTF-8 byte** preview limit. It tests editing and highlighting only. Preview was paused, so the right pane is empty; clicking “Run preview” cannot bypass the size limit. See the two screenshots above for normal rendered previews.
+> **Editing performance is not preview capacity.** The roughly 5 MiB fixture below is a historical editing test with preview paused, so the right pane is empty. The current implementation supports **complete 5 MiB document previews**, without truncation. Large documents take longer to compile and render; see [full-preview behavior](docs/LARGE-PREVIEW.md). See the two screenshots above for normal rendered previews.
 
 <details>
 <summary>Show the large-file highlighting stress test (preview paused)</summary>
@@ -60,7 +60,7 @@ A separate recorded Linux / Node 24 compiler benchmark measured dense ~100 KB MD
 ### Current boundaries
 
 - Colors can arrive briefly after opening, scrolling or editing. The large-file worker path does not provide syntax-driven folding or indentation.
-- Opening files is capped at **5 MiB**, as are desktop save/IPC operations. Preview source is capped at **512,000 UTF-8 bytes**. See [limits](docs/LIMITS.md).
+- Opening files is capped at **5 MiB**, as are desktop save/IPC operations. Complete preview source is also capped at **5 MiB**. See [limits](docs/LIMITS.md).
 - Recovery depends on local storage quota; save valuable work to disk.
 - Web mode rejects project imports. Desktop does not support Node native addons, server-only dependencies or arbitrary project plugins. See [supported project boundaries](docs/DESKTOP.md#supported-boundaries).
 - `.md` files are also parsed as MDX, not a plain-Markdown compatibility mode. Literal braces or angle brackets may need escaping.

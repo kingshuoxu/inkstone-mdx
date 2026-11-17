@@ -46,6 +46,7 @@ for (const kind of ["long-paragraphs", "rich-300k-lines"]) {
     await page.locator("#pause").click();
     const start = Date.now();
     const frame = await ready(page);
+    const readyMs = Date.now() - start;
     await expect(
       frame.getByRole("heading", { name: "FULL DOCUMENT TOP", exact: true }),
     ).toBeVisible();
@@ -74,7 +75,7 @@ for (const kind of ["long-paragraphs", "rich-300k-lines"]) {
       previewMs: Number(
         await page.locator("#compile-status").getAttribute("data-preview-ms"),
       ),
-      observedReadyMs: Date.now() - start,
+      observedReadyMs: readyMs,
       ...metrics,
     };
     console.log("FULL_PREVIEW", JSON.stringify(timing));
@@ -142,4 +143,120 @@ test("cancel large compilation, open another document and never accept an old re
   await expect(frame.getByRole("heading")).toHaveText("NEW DOCUMENT");
   await page.waitForTimeout(1500);
   await expect(frame.getByRole("heading")).toHaveText("NEW DOCUMENT");
+});
+
+test("large edits are batched and old preview stays visible until the latest full render", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  await page.addInitScript(() => {
+    window.compileRequests = [];
+    const Native = window.Worker;
+    window.Worker = class extends Native {
+      postMessage(data, ...rest) {
+        if (
+          data &&
+          "id" in data &&
+          typeof data.source === "string" &&
+          !data.type
+        )
+          window.compileRequests.push(data.source.slice(-200));
+        return super.postMessage(data, ...rest);
+      }
+    };
+  });
+  page.on("dialog", (d) => d.accept());
+  await page.goto("/");
+  await ready(page);
+  await open(
+    page,
+    "# BATCH START\n\n" + "batch content ".repeat(80000) + "\n\n# OLD TAIL\n",
+  );
+  await page.locator("#pause").click();
+  const frame = await ready(page);
+  await expect(
+    frame.getByRole("heading", { name: "OLD TAIL", exact: true }),
+  ).toHaveCount(1);
+  await page.evaluate(() => {
+    window.compileRequests = [];
+  });
+  await page.locator(".cm-content").focus();
+  await page.keyboard.press("ControlOrMeta+End");
+  for (let i = 0; i < 20; i++) {
+    await page.keyboard.insertText(i === 0 ? "\n# BATCHED " : "x");
+    await page.waitForTimeout(30);
+  }
+  expect(await page.evaluate(() => window.compileRequests.length)).toBe(0);
+  await expect(
+    frame.getByRole("heading", { name: "OLD TAIL", exact: true }),
+  ).toHaveCount(1);
+  await expect(page.locator("#compile-status")).toContainText("queued");
+  await ready(page);
+  expect(await page.evaluate(() => window.compileRequests.length)).toBe(1);
+  await expect(
+    page
+      .frameLocator("iframe:not([data-pending])")
+      .getByRole("heading", { name: "BATCHED " + "x".repeat(19), exact: true }),
+  ).toHaveCount(1);
+});
+
+test("edits during a delayed compile coalesce into one latest follow-up without stale publication", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  await page.addInitScript(() => {
+    window.compileRequests = [];
+    const Native = window.Worker;
+    window.Worker = class extends Native {
+      postMessage(data, ...rest) {
+        if (
+          data &&
+          "id" in data &&
+          typeof data.source === "string" &&
+          !data.type
+        )
+          window.compileRequests.push(data.source.slice(-200));
+        return super.postMessage(data, ...rest);
+      }
+      set onmessage(fn) {
+        super.onmessage = (event) => {
+          if (event.data.code && window.delayCompileResponse) {
+            window.delayCompileResponse = false;
+            setTimeout(() => fn(event), 3000);
+          } else fn(event);
+        };
+      }
+    };
+  });
+  page.on("dialog", (d) => d.accept());
+  await page.goto("/");
+  await ready(page);
+  await open(page, "# ASYNC OLD\n\n" + "complete text ".repeat(80000) + "\n");
+  await page.locator("#pause").click();
+  await ready(page);
+  await page.evaluate(() => {
+    window.compileRequests = [];
+    window.delayCompileResponse = true;
+  });
+  await page.locator(".cm-content").focus();
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.insertText("\n# INTERMEDIATE\n");
+  await expect(page.locator("#compile-status")).toHaveAttribute(
+    "data-state",
+    "compiling",
+  );
+  for (let i = 0; i < 10; i++)
+    await page.keyboard.insertText(i === 0 ? "\n# LATEST " : "z");
+  await expect(
+    page
+      .frameLocator("iframe:not([data-pending])")
+      .getByRole("heading", { name: "INTERMEDIATE", exact: true }),
+  ).toHaveCount(0);
+  await ready(page);
+  expect(await page.evaluate(() => window.compileRequests.length)).toBe(2);
+  await expect(
+    page
+      .frameLocator("iframe:not([data-pending])")
+      .getByRole("heading", { name: "LATEST " + "z".repeat(9), exact: true }),
+  ).toHaveCount(1);
 });

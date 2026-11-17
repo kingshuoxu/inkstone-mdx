@@ -39,7 +39,7 @@ Node built-ins, native addons, server-only packages, remote imports, external fi
 
 ## Trust and isolation
 
-Only the application main frame has a narrow Electron preload API. The main process validates both sender and frame before every operation. File dialogs select paths; the renderer cannot pass arbitrary filesystem paths to read or write. The bundler runs in a Node worker thread, parses source without evaluating it, and terminates after 15 seconds. It ignores project configuration and checks real resolved paths against the trusted root.
+Only the application main frame has a narrow Electron preload API. The main process validates both sender and frame before every operation. File dialogs select paths; the renderer cannot pass arbitrary filesystem paths to read or write. The bundler runs in a Node worker thread, parses source without evaluating it, and terminates after 120 seconds. It ignores project configuration and checks real resolved paths against the trusted root.
 
 Document/component code executes in an opaque-origin `sandbox="allow-scripts"` iframe loaded from a dedicated preview protocol. It has no Node, preload API or host DOM access. Electron enables context isolation, renderer sandboxing and web security. The application session rejects network requests outside its internal protocols, denies permissions, downloads and new windows, and rejects external frame requests. A frame navigation attempt can replace its content with a blocked/error page; Rebuild restores the preview. Preview CSP also denies network connections and nested frames. The CI launch uses `--no-sandbox` on Linux runners only to accommodate their container; the installed application does not add that flag. A passing CI test is not proof of OS sandbox enforcement.
 

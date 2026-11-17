@@ -1,3 +1,5 @@
+> Historical report: the full-preview change now allows 5 MiB source. Earlier 512,000-byte preview limits below describe the tested historical revision. See [full-preview validation](LARGE-PREVIEW.md).
+
 # Extended validation
 
 The extended browser and Electron suites exercise near-5 MiB ASCII/Chinese documents, sustained input, exact downloaded/native saved bytes, save-a-copy and recovery. Recovery is conditional on localStorage quota: a 5 MiB source can exceed quota after JSON escaping. The UI must report unavailable recovery and retain the previous draft; a successful file save remains separate. Recovery is debounced and does not guarantee recovery after an abrupt process crash.
