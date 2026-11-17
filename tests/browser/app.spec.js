@@ -7,7 +7,7 @@ async function replace(page, source) {
 }
 test("real JSX, component state, split modes and mobile layout", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto("/");
   const frame = page.frameLocator("iframe");
   await expect(
@@ -17,12 +17,14 @@ test("real JSX, component state, split modes and mobile layout", async ({
   await expect(
     frame.getByRole("button", { name: "Clicked 1 times" }),
   ).toBeVisible();
-  await page.screenshot({ path: "docs/workspace.png" });
+  await page.screenshot({
+    path: `docs/workspace-${testInfo.project.name}.png`,
+  });
   await page.getByRole("button", { name: "Preview", exact: true }).click();
   await expect(page.locator(".source-pane")).toBeHidden();
   await page.getByRole("button", { name: "Split", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: "docs/mobile.png" });
+  await page.screenshot({ path: `docs/mobile-${testInfo.project.name}.png` });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
@@ -32,25 +34,25 @@ test("syntax errors retain last good preview, recover draft and render runtime e
 }) => {
   await page.goto("/");
   await expect(
-    page.frameLocator("iframe").getByRole("heading").first(),
+    page.frameLocator("iframe").getByRole("heading", { level: 1 }).first(),
   ).toBeVisible();
   await replace(page, "<Broken>");
   await expect(page.locator("#preview-error")).toBeVisible();
   await expect(
-    page.frameLocator("iframe").getByRole("heading").first(),
+    page.frameLocator("iframe").getByRole("heading", { level: 1 }).first(),
   ).toHaveText("A little space to think.");
   await replace(page, "# Recovered\n\n{2 + 3}");
-  await expect(page.frameLocator("iframe").getByRole("heading")).toHaveText(
-    "Recovered",
-  );
+  await expect(
+    page.frameLocator("iframe").getByRole("heading", { level: 1 }),
+  ).toHaveText("Recovered");
   page.on("dialog", (d) => d.accept());
   await page.reload();
   await expect(page.locator("#notice")).toContainText("Recovered your last");
   await expect(page.locator("iframe")).toHaveCount(0);
   await page.getByRole("button", { name: "Run preview" }).click();
-  await expect(page.frameLocator("iframe").getByRole("heading")).toHaveText(
-    "Recovered",
-  );
+  await expect(
+    page.frameLocator("iframe").getByRole("heading", { level: 1 }),
+  ).toHaveText("Recovered");
   await replace(page, "{unknownVariable}");
   await expect(page.frameLocator("iframe").locator("#root")).toContainText(
     "Runtime error",
@@ -199,7 +201,7 @@ test("opened files require explicit trust before executing preview", async ({
   await expect(page.locator("iframe")).toHaveCount(0);
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Run preview" }).click();
-  await expect(page.frameLocator("iframe").getByRole("heading")).toHaveText(
-    "Opened",
-  );
+  await expect(
+    page.frameLocator("iframe").getByRole("heading", { level: 1 }),
+  ).toHaveText("Opened");
 });

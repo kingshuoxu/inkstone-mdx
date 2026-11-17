@@ -10,7 +10,8 @@
     "test:e2e": "playwright test",
     "bench": "node scripts/bench.mjs",
     "format": "prettier --write src scripts tests *.js *.json *.html README.md docs/*.md .github/workflows/*.yml",
-    "format:check": "prettier --check src scripts tests *.js *.json *.html README.md docs/*.md .github/workflows/*.yml"
+    "format:check": "prettier --check src scripts tests *.js *.json *.html README.md docs/*.md .github/workflows/*.yml",
+    "test:worker": "node scripts/check-worker.mjs"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.3.3",

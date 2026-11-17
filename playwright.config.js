@@ -3,7 +3,6 @@ export default defineConfig({
   testDir: "./tests/browser",
   workers: 1,
   use: {
-    baseURL: "http://127.0.0.1:4173",
     launchOptions: {
       executablePath: process.env.CHROMIUM_PATH || undefined,
       args: ["--no-sandbox"],
@@ -12,10 +11,21 @@ export default defineConfig({
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },
-  webServer: {
-    command: "npm run dev -- --port 4173",
-    url: "http://127.0.0.1:4173",
-    reuseExistingServer: !process.env.CI,
-  },
+  projects: [
+    { name: "development", use: { baseURL: "http://127.0.0.1:4173" } },
+    { name: "production", use: { baseURL: "http://127.0.0.1:4174" } },
+  ],
+  webServer: [
+    {
+      command: "npm run dev -- --port 4173",
+      url: "http://127.0.0.1:4173",
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: "npm run build && npx vite preview --host 127.0.0.1 --port 4174",
+      url: "http://127.0.0.1:4174",
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
   reporter: "list",
 });
