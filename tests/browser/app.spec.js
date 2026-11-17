@@ -17,6 +17,12 @@ test("real JSX, component state, split modes and mobile layout", async ({
   await expect(
     frame.getByRole("button", { name: "Clicked 1 times" }),
   ).toBeVisible();
+  const line = await page.locator(".cm-line").first().boundingBox();
+  const number = await page
+    .locator(".cm-lineNumbers .cm-gutterElement")
+    .filter({ hasText: /^1$/ })
+    .boundingBox();
+  expect(Math.abs(line.y - number.y)).toBeLessThanOrEqual(2);
   await page.screenshot({
     path: `docs/workspace-${testInfo.project.name}.png`,
   });
