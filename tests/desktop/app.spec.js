@@ -16,6 +16,8 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
   await fs.cp(path.resolve("examples/project"), project, { recursive: true });
   const file = path.join(project, "index.mdx");
   const source = await fs.readFile(file, "utf8");
+  const rustSource = source + "\n\n" + "plain text ".repeat(2000);
+  await fs.writeFile(file, rustSource);
   const args = process.env.INKSTONE_EXECUTABLE ? [] : [path.resolve(".")];
   args.push("--user-data-dir=" + userData);
   if (process.platform === "linux") args.push("--no-sandbox"); // CI container only; installed app never adds this.
@@ -47,6 +49,10 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
       win.focus();
     });
     const page = await app.firstWindow();
+    page.on("console", (m) => {
+      if (m.type() === "error") console.log("RENDERER_ERROR", m.text());
+    });
+    page.on("pageerror", (e) => console.log("PAGE_ERROR", e.message));
     await page.evaluate(() => {
       window.confirm = () => true;
     });
@@ -55,6 +61,20 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
         .frameLocator("iframe")
         .getByRole("heading", { name: "A little space to think." }),
     ).toBeVisible();
+    await page.locator(".cm-content").click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.insertText(
+      "# Rust standalone\n\n" + "plain text ".repeat(2000),
+    );
+    await expect(
+      page
+        .frameLocator("iframe")
+        .getByRole("heading", { name: "Rust standalone" }),
+    ).toBeVisible();
+    await expect(page.locator("#compile-status")).toHaveAttribute(
+      "data-engine",
+      "rust",
+    );
     await page.getByRole("link", { name: "Inkstone home" }).click();
     await page.locator("#project-open").click();
     await expect(page.locator("#project-status")).toContainText(
@@ -88,6 +108,14 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
     await expect(
       frame.getByRole("button", { name: "Project component: 1" }),
     ).toBeVisible();
+    expect(
+      (
+        await page.evaluate(
+          (source) => window.inkstoneDesktop.compile(source),
+          rustSource,
+        )
+      ).engines,
+    ).toContain("rust");
     await page.screenshot({ path: "docs/desktop-project.png" });
     const preview = page.frames().find((f) => f !== page.mainFrame());
     expect(
@@ -289,6 +317,11 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
     expect((await fs.stat(path.join(project, "boundary-copy.mdx"))).size).toBe(
       5 * 1024 * 1024,
     );
+  } catch (error) {
+    const page = await app.firstWindow();
+    console.log("FAILURE_STATE", await page.locator("body").innerText());
+    await page.screenshot({ path: "docs/desktop-failure.png" });
+    throw error;
   } finally {
     await app.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows().forEach((w) => w.destroy()),

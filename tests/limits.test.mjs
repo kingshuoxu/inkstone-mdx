@@ -62,3 +62,17 @@ test("recovery quota failure is surfaced and does not silently replace the previ
   });
   assert.equal(readDraft(storage).source, "# old");
 });
+
+test("native UTF-8 decoding preserves BOM/CRLF and rejects corrupt bytes", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "ink-encoding-"));
+  try {
+    const file = path.join(root, "document.mdx");
+    const source = "\uFEFF# 中文\r\n";
+    await fs.writeFile(file, source);
+    assert.equal((await readDocument(file)).source, source);
+    await fs.writeFile(file, Buffer.from([0xff, 0xfe]));
+    await assert.rejects(readDocument(file), /not valid UTF-8/);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});

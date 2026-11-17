@@ -15,9 +15,16 @@ export function writeDraft(storage, source, name) {
     JSON.stringify({ source, name, updated: Date.now() }),
   );
 }
+export async function fileText(file) {
+  return file.arrayBuffer
+    ? new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+        await file.arrayBuffer(),
+      )
+    : file.text();
+}
 export async function saveHandle(handle, source, baseline) {
   const current = await handle.getFile();
-  if ((await current.text()) !== baseline)
+  if ((await fileText(current)) !== baseline)
     throw new Error(
       "File changed on disk. Use Save a copy to preserve both versions.",
     );

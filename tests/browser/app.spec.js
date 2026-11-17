@@ -383,3 +383,52 @@ test("identical queued recovery flush is not a false cross-tab conflict", async 
   );
   await expect(page.locator("#notice")).toContainText("Another tab");
 });
+
+test("Rust chunk failure falls back without losing source or preview", async ({
+  page,
+}) => {
+  await page.route(/core\.generated/, (route) => route.abort());
+  await page.goto("/");
+  const source = "# Fallback preserved\n\n" + "plain text ".repeat(2000);
+  await replace(page, source);
+  await expect(
+    page
+      .frameLocator("iframe")
+      .getByRole("heading", { name: "Fallback preserved" }),
+  ).toBeVisible();
+  await expect(page.locator("#compile-status")).toHaveAttribute(
+    "data-engine",
+    "javascript",
+  );
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => JSON.parse(localStorage.getItem("inkstone.draft.v1")).source,
+      ),
+    )
+    .toBe(source);
+});
+
+test("100 KB native clipboard paste preserves complete source", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  const source =
+    "# Heading\n\n**bold** and {1+2}\n\n<Badge>中文</Badge>\n\n".repeat(1850);
+  await page.evaluate((text) => navigator.clipboard.writeText(text), source);
+  await page.locator(".cm-content").focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+v");
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () => JSON.parse(localStorage.getItem("inkstone.draft.v1")).source,
+        ),
+      { timeout: 15000 },
+    )
+    .toBe(source);
+});

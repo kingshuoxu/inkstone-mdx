@@ -3,7 +3,7 @@ import {
   closeSearchPanel,
   openSearchPanel,
 } from "@codemirror/search";
-import { Compartment, EditorState } from "@codemirror/state";
+import { Compartment, EditorState, Text } from "@codemirror/state";
 import {
   LANGUAGE_KEY,
   initialLanguage,
@@ -12,9 +12,14 @@ import {
   editorPhrases,
 } from "./i18n.js";
 import { EditorView, basicSetup } from "codemirror";
+import {
+  backgroundHighlight,
+  backgroundHighlightTheme,
+  resetHighlight,
+} from "./background-highlight.js";
 import { markdown } from "@codemirror/lang-markdown";
 import { sample } from "./sample.js";
-import { readDraft, writeDraft, saveHandle } from "./storage.js";
+import { readDraft, writeDraft, saveHandle, fileText } from "./storage.js";
 import { previewDocument } from "./sandbox.js";
 import runtime from "./runtime.generated.txt?raw";
 import "./style.css";
@@ -26,6 +31,13 @@ try {
 let language = initialLanguage(preferenceStorage, navigator.language);
 const t = (key, values) => translate(language, key, values);
 const languageConfig = new Compartment();
+const lineEndingConfig = new Compartment();
+const syntaxConfig = new Compartment();
+const syntaxForLength = (length) =>
+  length > 1000000
+    ? [backgroundHighlight, backgroundHighlightTheme]
+    : [markdown()];
+const lineEnding = (text) => text.match(/\r\n|\r|\n/)?.[0] || "\n";
 const translations = createUITranslations(document.body, () => language);
 const ui = (selector, key, values) =>
   translations.text($(selector), key, values);
@@ -42,11 +54,12 @@ let source = draft?.source ?? sample,
   handle = null,
   busy = false,
   worker,
+  workerBusy = false,
   timer,
   timeout,
   revision = 0;
 $("#app").innerHTML =
-  `<aside class="sidebar"><a class="brand" href="#" aria-label="Inkstone home"><span class="brand-mark">i.</span>inkstone<span class="beta">MDX</span></a><div class="section-label">WORKSPACE</div><div class="file-item"><span>◈</span><span id="side-name"></span><i id="dirty-dot"></i></div><button id="open-side" class="sidebar-button">＋ Open a document</button><div class="sidebar-bottom"><div class="leaf">❧</div><strong>A place for your next idea.</strong><p>Plain text. Live components.<br>A little room to think.</p><button id="help">Components & help ↗</button><div class="local"><span></span> Local workspace</div></div></aside><main class="workspace"><header><div class="breadcrumb">Workspace <span>/</span> <strong id="file-name"></strong></div><div class="actions"><button id="open">Open <kbd>⌘ O</kbd></button><button id="copy">Save a copy</button><button id="save" class="primary">Save <kbd>⌘ S</kbd></button></div></header><section class="workspace-title"><div><div class="eyebrow">MAKE ROOM FOR YOUR IDEAS</div><h1>Your words, with possibility.</h1></div><div class="view-toggle" role="group" aria-label="Workspace view"><button data-view="source">Source</button><button data-view="split" aria-pressed="true">Split</button><button data-view="preview">Preview</button></div></section><div id="notice" role="status" hidden></div><div class="panes" data-mode="split"><section class="source-pane"><div class="pane-head"><span><b>◧</b> SOURCE</span><span>MDX <i>·</i> UTF-8</span></div><div id="editor"></div></section><section class="preview-pane"><div class="pane-head"><span><b>◉</b> LIVE PREVIEW</span><span id="compile-status">Preparing…</span><button id="pause">Pause</button></div><div id="preview-error" role="alert" hidden></div><div id="preview"></div></section></div><footer><span id="stats"></span><span id="draft-status"></span><span>Sandboxed preview <b>◇</b></span></footer></main><input type="file" id="file-input" accept=".mdx,.md,.markdown,text/plain" hidden><dialog><button id="close-help" aria-label="Close help">×</button><div class="eyebrow">A LITTLE MORE POSSIBILITY</div><h2>Markdown meets components.</h2><p>Use Markdown, GFM tables, JSX, and JavaScript expressions. Built-in components require no imports:</p><pre>&lt;Callout title="Note" tone="warning"&gt;Text&lt;/Callout&gt;\n&lt;Badge&gt;New&lt;/Badge&gt;\n&lt;Card title="Idea"&gt;Content&lt;/Card&gt;\n&lt;Counter /&gt;</pre><p>Browser mode rejects imports and exports. Desktop mode supports local components and installed browser-compatible dependencies after workspace trust. Preview resets component state after each compile. Remote assets are blocked; data images work.</p><p>The preview has an opaque origin with no file handles or app bridge. Executable MDX can still hang its browser tab or navigate its own frame: only run code you trust. Pause stops previews while you edit.</p><p>Save overwrites only a file you selected, with a conflict check. Unsupported browsers download a copy. Recovery drafts are stored in this browser; they are not a backup. Avoid simultaneous editing in multiple tabs.</p></dialog>`;
+  `<aside class="sidebar"><a class="brand" href="#" aria-label="Inkstone home"><span class="brand-mark">i.</span>inkstone<span class="beta">MDX</span></a><div class="section-label">WORKSPACE</div><div class="file-item"><span>◈</span><span id="side-name"></span><i id="dirty-dot"></i></div><button id="open-side" class="sidebar-button">＋ Open a document</button><div class="sidebar-bottom"><div class="leaf">❧</div><strong>A place for your next idea.</strong><p>Plain text. Live components.<br>A little room to think.</p><button id="help">Components & help ↗</button><div class="local"><span></span> Local workspace</div></div></aside><main class="workspace"><header><div class="breadcrumb">Workspace <span>/</span> <strong id="file-name"></strong></div><div class="actions"><button id="open">Open <kbd>⌘ O</kbd></button><button id="copy">Save a copy</button><button id="save" class="primary">Save <kbd>⌘ S</kbd></button></div></header><section class="workspace-title"><div><div class="eyebrow">MAKE ROOM FOR YOUR IDEAS</div><h1>Your words, with possibility.</h1></div><div class="view-toggle" role="group" aria-label="Workspace view"><button data-view="source">Source</button><button data-view="split" aria-pressed="true">Split</button><button data-view="preview">Preview</button></div></section><div id="notice" role="status" hidden></div><div class="panes" data-mode="split"><section class="source-pane"><div class="pane-head"><span><b>◧</b> SOURCE</span><span>MDX <i>·</i> UTF-8</span></div><div id="editor"></div></section><section class="preview-pane"><div class="pane-head"><span><b>◉</b> LIVE PREVIEW</span><span id="compile-status">Preparing…</span><button id="pause">Pause</button></div><div id="preview-error" role="alert" hidden></div><div id="preview"></div></section></div><footer><span id="stats"></span><span id="syntax-status" hidden></span><span id="draft-status"></span><span>Sandboxed preview <b>◇</b></span></footer></main><input type="file" id="file-input" accept=".mdx,.md,.markdown,text/plain" hidden><dialog><button id="close-help" aria-label="Close help">×</button><div class="eyebrow">A LITTLE MORE POSSIBILITY</div><h2>Markdown meets components.</h2><p>Use Markdown, GFM tables, JSX, and JavaScript expressions. Built-in components require no imports:</p><pre>&lt;Callout title="Note" tone="warning"&gt;Text&lt;/Callout&gt;\n&lt;Badge&gt;New&lt;/Badge&gt;\n&lt;Card title="Idea"&gt;Content&lt;/Card&gt;\n&lt;Counter /&gt;</pre><p>Browser mode rejects imports and exports. Desktop mode supports local components and installed browser-compatible dependencies after workspace trust. Preview resets component state after each compile. Remote assets are blocked; data images work.</p><p>The preview has an opaque origin with no file handles or app bridge. Executable MDX can still hang its browser tab or navigate its own frame: only run code you trust. Pause stops previews while you edit.</p><p>Save overwrites only a file you selected, with a conflict check. Unsupported browsers download a copy. Recovery drafts are stored in this browser; they are not a backup. Avoid simultaneous editing in multiple tabs.</p></dialog>`;
 const languageLabel = document.createElement("label");
 languageLabel.className = "language-control";
 languageLabel.innerHTML =
@@ -66,6 +79,10 @@ function refreshStats() {
   });
 }
 function refresh() {
+  const large = editor.state.doc.length > 1000000;
+  $("#syntax-status").hidden = !large;
+  if (large)
+    ui("#syntax-status", "Large file · background syntax highlighting");
   $("#file-name").textContent = name;
   $("#side-name").textContent = name;
   $("#dirty-dot").style.visibility = dirty ? "visible" : "hidden";
@@ -102,7 +119,15 @@ function pauseUntrustedPreview() {
 }
 function schedule() {
   clearTimeout(timer);
-  worker?.terminate();
+  if (
+    workerBusy ||
+    paused ||
+    import.meta.env.VITE_COMPILER_ENGINE === "javascript"
+  ) {
+    worker?.terminate();
+    worker = null;
+    workerBusy = false;
+  }
   clearTimeout(timeout);
   revision++;
   if (paused) return;
@@ -140,12 +165,15 @@ async function run() {
     }
     return;
   }
-  worker = new Worker(new URL("./worker.js", import.meta.url), {
+  worker ||= new Worker(new URL("./worker.js", import.meta.url), {
     type: "module",
   });
   const active = worker;
+  workerBusy = true;
   timeout = setTimeout(() => {
     active.terminate();
+    worker = null;
+    workerBusy = false;
     showError(
       "Compilation timed out. Source is safe; shorten the document or pause preview.",
     );
@@ -153,7 +181,8 @@ async function run() {
   active.onmessage = ({ data }) => {
     if (data.id !== revision) return;
     clearTimeout(timeout);
-    active.terminate();
+    workerBusy = false;
+    $("#compile-status").dataset.engine = data.engine || "error";
     if (data.error) {
       showError(data.error);
       return;
@@ -169,6 +198,8 @@ async function run() {
   active.onerror = () => {
     clearTimeout(timeout);
     active.terminate();
+    worker = null;
+    workerBusy = false;
     showError("Compiler failed. Edit to retry; source is safe.");
   };
   active.postMessage({ id, source });
@@ -181,11 +212,20 @@ function showError(error) {
   ui("#compile-status", "Preview error · last good view");
 }
 const editor = new EditorView({
-  doc: source,
+  doc: Text.of(source.split(/\r\n|\r|\n/)),
   parent: $("#editor"),
   extensions: [
     basicSetup,
-    markdown(),
+    lineEndingConfig.of(EditorState.lineSeparator.of(lineEnding(source))),
+    syntaxConfig.of(syntaxForLength(source.length)),
+    EditorState.transactionExtender.of((tr) => {
+      if (!tr.docChanged) return null;
+      const wantsSyntax = tr.newDoc.length <= 1000000;
+      if (tr.startState.doc.length <= 1000000 === wantsSyntax) return null;
+      return {
+        effects: syntaxConfig.reconfigure(syntaxForLength(tr.newDoc.length)),
+      };
+    }),
     EditorView.lineWrapping,
     languageConfig.of([
       EditorState.phrases.of(language === "zh-CN" ? editorPhrases : {}),
@@ -193,7 +233,7 @@ const editor = new EditorView({
     ]),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
-        source = update.state.doc.toString();
+        source = update.state.sliceDoc();
         dirty = source !== baseline;
         refresh();
         clearTimeout(draftTimer);
@@ -206,6 +246,13 @@ const editor = new EditorView({
     }),
   ],
 });
+$("#editor").addEventListener("highlight-error", () =>
+  notice(
+    t(
+      "Background highlighting failed. Reopen the document to retry; editing and saving are unaffected.",
+    ),
+  ),
+);
 function canReplace() {
   return (
     !dirty ||
@@ -219,14 +266,33 @@ function canReplace() {
 async function load(file, newHandle = null) {
   if (file.size > 5 * 1024 * 1024)
     throw new Error("Files larger than 5 MB are not supported.");
-  const text = await file.text();
+  let text;
+  try {
+    text = file.arrayBuffer
+      ? new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+          await file.arrayBuffer(),
+        )
+      : await file.text();
+  } catch {
+    throw Error("File is not valid UTF-8. Source was not replaced.");
+  }
   if (!canReplace()) return;
   pauseUntrustedPreview();
   handle = newHandle;
   name = file.name;
   baseline = text;
   editor.dispatch({
-    changes: { from: 0, to: editor.state.doc.length, insert: text },
+    effects: [
+      lineEndingConfig.reconfigure(
+        EditorState.lineSeparator.of(lineEnding(text)),
+      ),
+      resetHighlight.of(null),
+    ],
+    changes: {
+      from: 0,
+      to: editor.state.doc.length,
+      insert: Text.of(text.split(/\r\n|\r|\n/)),
+    },
   });
   source = text;
   dirty = false;
@@ -309,7 +375,7 @@ async function save(copy = false) {
         ],
       });
       const file = await target.getFile();
-      await saveHandle(target, snapshot, await file.text());
+      await saveHandle(target, snapshot, await fileText(file));
     } else if (target) await saveHandle(target, snapshot, baseline);
     else {
       const url = URL.createObjectURL(

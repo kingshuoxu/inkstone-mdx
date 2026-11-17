@@ -5,6 +5,18 @@ import { defineConfig } from "vite";
 // condition. Compilation runs in a Worker, where document does not exist.
 // Resolve the package's DOM-free default entry in both dev and worker builds.
 export default defineConfig({
+  worker: { format: "es" },
+  // Prebundle lazy highlight-worker entry imports up front. Otherwise the first
+  // large file can discover a new dependency and reload the development page.
+  optimizeDeps: {
+    include: [
+      "@codemirror/lang-markdown",
+      "@codemirror/state",
+      "@codemirror/language",
+      "@lezer/common",
+      "@lezer/highlight",
+    ],
+  },
   resolve: {
     alias: [
       {

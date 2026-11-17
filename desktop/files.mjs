@@ -24,10 +24,21 @@ export async function readDocument(file) {
   const stat = await fs.stat(real);
   if (!stat.isFile() || stat.size > 5 * 1024 * 1024)
     throw Error("Choose a text file smaller than 5 MiB.");
+  const bytes = await fs.readFile(real);
+  if (bytes.length > 5 * 1024 * 1024)
+    throw Error("Choose a text file smaller than 5 MiB.");
+  let source;
+  try {
+    source = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+      bytes,
+    );
+  } catch {
+    throw Error("File is not valid UTF-8. Source was not replaced.");
+  }
   return {
     path: real,
     name: path.basename(real),
-    source: await fs.readFile(real, "utf8"),
+    source,
   };
 }
 export async function atomicSave(file, source, baseline) {

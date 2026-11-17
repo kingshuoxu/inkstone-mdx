@@ -80,7 +80,12 @@ let window,
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "inkstone",
-    privileges: { standard: true, secure: true, supportFetchAPI: true },
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
   },
   { scheme: "inkstone-preview", privileges: { standard: true, secure: true } },
 ]);
@@ -174,7 +179,7 @@ async function boot() {
     const response = new Response(bytes, { headers: { "Content-Type": mime } });
     response.headers.set(
       "Content-Security-Policy",
-      "default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline'; frame-src inkstone-preview:; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'",
+      "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; frame-src inkstone-preview:; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'",
     );
     return response;
   });

@@ -11,7 +11,17 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+          cache-on-failure: true
+      - run: cargo install wasm-bindgen-cli --version 0.2.105 --locked
       - run: npm ci
+      - run: npm run build:core
+      - run: cargo test --manifest-path core/Cargo.toml --locked
       - run: npm ci --prefix examples/project --ignore-scripts
       - run: npm test
       - run: npm run build
@@ -19,10 +29,19 @@ jobs:
       - run: npm run format:check
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - uses: actions/checkout@v4
+        with:
+          ref: 19f4d5b2f5bff49ec2de0a146177fafa8d0485d1
+          path: baseline
+      - run: npm ci --prefix baseline
+      - run: npm run build --prefix baseline
+      - run: npx playwright test --config playwright.perf.config.js
+      - run: node scripts/bench-core.mjs > docs/core-benchmark.jsonl
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: browser-evidence
           path: |
             docs/*.png
+            docs/core-benchmark.jsonl
             test-results/

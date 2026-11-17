@@ -15,19 +15,25 @@
     "desktop": "npm run build && electron .",
     "desktop:pack": "npm run build && electron-builder --dir",
     "desktop:dist": "npm run build && electron-builder --publish never",
-    "test:desktop": "playwright test --config playwright.desktop.config.js"
+    "test:desktop": "playwright test --config playwright.desktop.config.js",
+    "build:core": "node scripts/build-core.mjs",
+    "bench:core": "node scripts/bench-core.mjs"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.3.3",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/search": "^6.6.0",
+    "@codemirror/state": "^6.7.0",
+    "@codemirror/view": "^6.43.15",
+    "@lezer/common": "^1.5.5",
+    "@lezer/highlight": "^1.2.5",
     "@mdx-js/mdx": "^3.1.1",
     "codemirror": "^6.0.2",
     "decode-named-character-reference": "^1.3.0",
+    "esbuild": "^0.25.12",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "remark-gfm": "^4.0.1",
-    "esbuild": "^0.25.12",
-    "@codemirror/state": "^6.7.0",
-    "@codemirror/search": "^6.6.0"
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
@@ -49,7 +55,10 @@
       "desktop/**",
       "src/preview-shared.jsx",
       "package.json",
-      "src/i18n.js"
+      "src/i18n.js",
+      "src/compiler.js",
+      "src/compiler-legacy.js",
+      "src/core.generated.js"
     ],
     "directories": {
       "output": "release"
