@@ -29,7 +29,14 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
       { project, file },
     );
     const page = await app.firstWindow();
-    page.on("dialog", (d) => d.accept());
+    await page.evaluate(() => {
+      window.confirm = () => true;
+    });
+    await expect(
+      page
+        .frameLocator("iframe")
+        .getByRole("heading", { name: "A little space to think." }),
+    ).toBeVisible();
     await page.locator("#project-open").click();
     await expect(page.locator("#project-status")).toContainText(
       "Trusted this session",

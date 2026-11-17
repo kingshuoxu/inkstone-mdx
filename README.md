@@ -4,6 +4,10 @@ A quiet, source-first MDX workspace. Open local documents, edit Markdown and JSX
 
 **Status: early implementation. Core tests, the built-worker check, and Chromium browser tests for both development and production builds pass on GitHub Actions. Desktop and mobile screenshots have been visually reviewed. Do not treat this version as a hardened hostile-code execution service.**
 
+## Desktop project edition
+
+The draft desktop edition adds session-trusted local workspaces, relative component imports, installed browser-compatible npm dependencies and native file saving. See [desktop setup, security boundaries and packaging](docs/DESKTOP.md). Browser-only limitations below still apply to the web edition. Desktop verification and installer results are tracked in the draft PR; do not infer platform support from build configuration alone.
+
 ## Run locally
 
 Requires Node.js 22.12+ (tested with Node 24) and npm.
@@ -42,7 +46,7 @@ Supports Markdown, GFM tables/task lists/strikethrough, inline JSX, JavaScript e
 The answer is {6 \* 7}.
 ```
 
-`Counter` demonstrates real React state, not a static JSX approximation. Component state resets after successful compilation. Imports and exports are explicitly rejected; arbitrary project components, package installation, relative assets, TypeScript, frontmatter and project resolution are not implemented. Built-ins are compiled into the preview runtime. Remote images/fonts/media are blocked; data images work. The preview limit is 500 KB (512,000 UTF-8 bytes), and opening files is limited to 5 MiB. Larger editor buffers can still be saved.
+`Counter` demonstrates real React state, not a static JSX approximation. Component state resets after successful compilation. In the browser-only edition, imports and exports are explicitly rejected; arbitrary project components, package installation, relative assets, TypeScript, frontmatter and project resolution are not implemented. Built-ins are compiled into the preview runtime. Remote images/fonts/media are blocked; data images work. The preview limit is 500 KB (512,000 UTF-8 bytes), and opening files is limited to 5 MiB. Larger editor buffers can still be saved.
 
 ## Security model and limits
 
@@ -57,6 +61,7 @@ Recovery drafts are plaintext in the browser profile. Avoid opening sensitive do
 ## Development and verification
 
 ```sh
+npm ci --prefix examples/project --ignore-scripts
 npm test                       # compiler, recovery, save semantics, payload tests
 npm run bench                  # repeatable compiler benchmark
 npx playwright install chromium
