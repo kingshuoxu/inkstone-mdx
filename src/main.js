@@ -304,6 +304,10 @@ $("#pause").onclick = () => {
   }
   paused = !paused;
   $("#pause").textContent = paused ? "Resume" : "Pause";
+  if (!paused)
+    notice(
+      "Preview is running trusted JavaScript. Pause to stop subsequent execution.",
+    );
   schedule();
   if (paused) {
     $("#preview").replaceChildren();

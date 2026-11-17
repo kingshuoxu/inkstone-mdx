@@ -2,7 +2,15 @@ import { test, expect, _electron as electron } from "@playwright/test";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
+import http from "node:http";
 test("native project preview, npm state, isolation, saves, errors and revoke", async () => {
+  let requests = 0;
+  const server = http.createServer((_req, res) => {
+    requests++;
+    res.end("Unexpected external request");
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const probeURL = `http://127.0.0.1:${server.address().port}/escape`;
   const userData = await fs.mkdtemp(path.join(os.tmpdir(), "ink-electron-"));
   const project = await fs.mkdtemp(path.join(os.tmpdir(), "ink-project-"));
   await fs.cp(path.resolve("examples/project"), project, { recursive: true });
@@ -24,7 +32,11 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
             opts.properties.includes("openDirectory") ? project : file,
           ],
         });
-        dialog.showMessageBox = async () => ({ response: 1 });
+        dialog.showMessageBox = async () => ({ response: 0 });
+        dialog.showSaveDialog = async () => ({
+          canceled: false,
+          filePath: file.replace(/index\.mdx$/, "recovered.mdx"),
+        });
       },
       { project, file },
     );
@@ -42,6 +54,23 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
         .frameLocator("iframe")
         .getByRole("heading", { name: "A little space to think." }),
     ).toBeVisible();
+    await page.locator("#project-open").click();
+    await expect(page.locator("#project-status")).toContainText(
+      "No trusted workspace",
+    );
+    expect(
+      await page.evaluate(async () => {
+        try {
+          await window.inkstoneDesktop.compile("# denied");
+          return false;
+        } catch {
+          return true;
+        }
+      }),
+    ).toBe(true);
+    await app.evaluate(({ dialog }) => {
+      dialog.showMessageBox = async () => ({ response: 1 });
+    });
     await page.locator("#project-open").click();
     await expect(page.locator("#project-status")).toContainText(
       "Trusted this session",
@@ -88,18 +117,19 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
       node: "undefined",
       require: "undefined",
     });
-    const previewURL = preview.url();
-    await preview.evaluate(() => {
+    await preview.evaluate((url) => {
       const a = document.createElement("a");
-      a.href = "https://example.com/escape";
+      a.href = url;
       a.textContent = "Navigation probe";
       document.body.append(a);
-    });
+    }, probeURL);
     await frame.getByRole("link", { name: "Navigation probe" }).click();
+    expect(page.url()).toBe("inkstone://app/index.html");
+    await page.locator("#project-rebuild").click();
     await expect(
-      frame.getByRole("button", { name: "Project component: 1" }),
+      frame.getByRole("button", { name: "Project component: 0" }),
     ).toBeVisible();
-    expect(preview.url()).toBe(previewURL);
+    expect(requests).toBe(0);
     const editor = page.getByRole("textbox", { name: "MDX source editor" });
     async function replace(text) {
       await editor.click();
@@ -113,6 +143,11 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
     await replace(source + "\n\nconflicting");
     await page.locator("#save").click();
     await expect(page.locator("#notice")).toContainText("changed on disk");
+    expect(await fs.readFile(file, "utf8")).toBe("external version");
+    await page.locator("#copy").click();
+    await expect
+      .poll(() => fs.readFile(path.join(project, "recovered.mdx"), "utf8"))
+      .toContain("conflicting");
     expect(await fs.readFile(file, "utf8")).toBe("external version");
     await replace("import Nope from './missing.jsx'\n\n<Nope />");
     await expect(page.locator("#preview-error")).toBeVisible();
@@ -143,6 +178,7 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
       BrowserWindow.getAllWindows().forEach((w) => w.destroy()),
     );
     await app.close();
+    await new Promise((resolve) => server.close(resolve));
     await fs.rm(userData, { recursive: true, force: true });
     await fs.rm(project, { recursive: true, force: true });
   }
