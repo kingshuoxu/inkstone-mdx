@@ -1,18 +1,76 @@
 # Inkstone MDX
 
-A quiet, source-first MDX workspace. Open local documents, edit Markdown and JSX, and see real React components in an isolated preview. MIT licensed, with no accounts, backend, telemetry, paid services, or document uploads.
+**让文字，拥有更多可能。**
 
-**Status: early implementation. Core tests, the built-worker check, and Chromium browser tests for both development and production builds pass on GitHub Actions. Desktop and mobile screenshots have been visually reviewed. Do not treat this version as a hardened hostile-code execution service.**
+一个本地优先、源码优先的 MDX 编辑器：在安静的双栏工作区里编写 Markdown、使用 React 组件，并实时查看结果。提供网页版与 Windows / macOS / Linux 桌面版。
 
-## Desktop project edition
+[English](README.en.md) · [MIT License](LICENSE) · [桌面版指南](docs/DESKTOP.md) · [测试与限制](docs/EXTENDED-VALIDATION.md)
 
-The draft desktop edition adds session-trusted local workspaces, relative component imports, installed browser-compatible npm dependencies and native file saving. See [desktop setup, security boundaries and packaging](docs/DESKTOP.md). Browser-only limitations below still apply to the web edition. Desktop verification and installer results are tracked in the draft PR; do not infer platform support from build configuration alone.
+> **开发预览版**：本页描述 `feat/rust-mdx-core` 分支的功能，代码位于 [Draft PR #3](https://github.com/kingshuoxu/inkstone-mdx/pull/3)，尚未合并到 `main` 或正式发布。桌面测试包未签名，macOS 未公证。请只运行可信的 MDX 文档与项目。
 
-## Run locally
+![Inkstone MDX：源码与 React 实时预览并排显示](docs/screenshots/workspace-production.png)
 
-Requires Node.js 22.12+ (tested with Node 24), npm and a stable Rust toolchain for source builds. Packaged desktop apps need no Rust installation.
+## 功能与特点
+
+- **写作与组件在一起**：Markdown、GFM 表格/任务列表/删除线、JSX 和 JavaScript 表达式；内置 `Callout`、`Badge`、`Card`、`Counter`，预览中的 React 组件可以真正交互。
+- **专注的编辑体验**：源码 / 分栏 / 预览三种布局，行号、查找、撤销/重做、括号补全与 Markdown 风格语法高亮。不是完整的 MDX IDE 或语言服务器。
+- **中英文界面**：简体中文 / English 随时切换，记住选择；支持 UTF-8 中文文件名和内容。界面切换不会翻译文档。
+- **本地文件工作流**：打开 `.mdx`、`.md`、`.markdown`，保存、另存为、未保存提示和外部修改冲突检测。桌面版使用原生文件操作；网页版的直接写回能力取决于浏览器，不支持时下载副本。
+- **桌面项目预览**：显式信任项目后，可导入本地组件与项目中已安装的浏览器兼容 npm 依赖。支持撤销信任；不会自动安装依赖或执行项目构建配置。
+- **Rust/WASM 编译核心**：较大 MDX 的解析、语法树转换和 JavaScript 生成走 Rust/WASM；小文档及部分兼容性场景回退 JavaScript。UI、文件操作和 React 渲染并没有重写为 Rust。
+- **大文件保留高亮**：超过 100 万个 UTF-16 单元时，自动切换到后台增量解析，只向主线程传回可视区域样式，不再靠整体关闭高亮换取流畅输入。
+- **本地优先**：无需账号、后端或付费服务，没有应用遥测或文档上传。草稿保存在本机浏览器/应用配置中；草稿恢复不等于可靠备份。
+
+### 中文页面
+
+![简体中文界面与中文文档预览](docs/screenshots/chinese-production.png)
+
+### 大文件高亮
+
+![约 5 MiB 文档滚动至末尾后仍保留标题、强调和链接高亮](docs/screenshots/highlight-production.png)
+
+以上是 `4d269a4` 生产构建在 Chromium 中的真实运行截图，不是设计稿。大文件截图暂停了预览；顶部提示反映该测试文档超出浏览器草稿存储容量，文件保存与草稿恢复是两回事。截图来源与校验值见 [截图说明](docs/screenshots/README.md)。
+
+## 性能：保留高亮，而不是牺牲高亮
+
+同一 GitHub Actions Linux runner、Chromium、生产构建，约 **5 MiB** 文档，**暂停预览**，每组 20 次自动化输入。测量 `beforeinput` 到下一动画帧；旧版使用主线程高亮，新版使用后台 Worker 高亮。
+
+| 测试文档   | 旧版中位数 / p95 |  新版中位数 / p95 |
+| ---------- | ---------------: | ----------------: |
+| 普通长段落 | 292.5 / 303.9 ms | **8.4 / 16.2 ms** |
+| 富格式文档 |   47.5 / 64.2 ms | **8.3 / 15.9 ms** |
+
+数据来自提交 `4d269a4` 的 [同机对比 CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44084892798)，基线为 `19f4d5b`。这是编辑响应测试，**不是物理键盘延迟、完整实时预览性能或所有设备的帧率保证**。
+
+Rust 编译器的收益是另一项独立测量：在已记录的 Linux / Node 24 编译基准中，约 100 KB 复杂 MDX 的暖编译中位数从 651.8 ms 降到 198.3 ms；约 500 KB 时为 3342.1 → 2994.8 ms。它并非所有情况下都更快，也不会消除 React 渲染或执行文档代码的成本。完整条件、冷启动与内存数据见 [Rust 性能报告](docs/RUST-PERFORMANCE.md)。
+
+### 当前边界
+
+- 首次打开、快速滚动或修改后，高亮可能短暂延迟；大文件 Worker 路径暂不提供依赖语法树的折叠与缩进。
+- 文件打开上限 **5 MiB**，桌面保存 / IPC 也受此限制；预览源码上限 **512,000 UTF-8 字节**。这些是资源保护阈值，不是 MDX 格式限制，见 [大小限制说明](docs/LIMITS.md)。
+- 草稿恢复受本地存储配额影响，超大文档可能无法恢复；请主动保存文件。
+- 网页版不支持项目导入。桌面版也不支持 Node 原生模块、服务端包或任意项目插件；支持范围见 [桌面版指南](docs/DESKTOP.md#supported-boundaries)。
+- `.md` 文件同样按 MDX 解析，不是纯 Markdown 兼容模式，字面量花括号或尖括号可能需要转义。
+
+## 开始使用
+
+### 下载桌面测试包
+
+在 [Desktop 工作流](https://github.com/kingshuoxu/inkstone-mdx/actions/workflows/desktop.yml) 中选择成功运行，在 **Artifacts** 下载对应平台产物。作为已验证快照，也可以查看 [4d269a4 的三平台构建](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44084892678)。下载通常需要登录 GitHub，产物会过期；当前没有正式 Release 或自动更新器。
+
+- macOS：DMG / ZIP
+- Windows：NSIS 安装程序
+- Linux：AppImage / DEB
+
+安装后的应用不需要 Rust 或 Node 开发环境。安装包未签名 / 未公证，不能将打包成功等同于完整安装向导已验证。
+
+### 从源码启动
+
+需要 Node.js **22.12+**（CI 使用 Node 24）、npm、稳定版 Rust 工具链及系统构建工具。当前功能尚未进入主分支，先检出对应分支：
 
 ```sh
+git clone --branch feat/rust-mdx-core https://github.com/kingshuoxu/inkstone-mdx.git
+cd inkstone-mdx
 rustup target add wasm32-unknown-unknown
 cargo install wasm-bindgen-cli --version 0.2.105 --locked
 npm ci
@@ -20,93 +78,44 @@ npm run build:core
 npm run dev
 ```
 
-Open the localhost URL printed by Vite. `npm run build` creates `dist/`, which can be served by any static HTTP server. Opening `index.html` directly with `file://` does not work because the compiler is a module worker. No document data is sent to a server; dependencies are bundled locally. Development binds only to loopback.
+打开 Vite 打印的本地地址。`npm run build` 生成 `dist/`，用 HTTP 静态服务器提供它；不支持直接双击 `file://` 打开。
 
-## Interface language
-
-Choose **简体中文 / English** in the top toolbar. The initial language follows the browser/system language (Chinese locales use Simplified Chinese); an explicit choice is saved locally and restored on reload. The choice changes application text, accessibility labels, CodeMirror search controls, built-in preview labels and desktop dialogs/menus. It does not translate your document or discard undo history. An active preview recompiles on a language change, resetting component state; a paused document stays paused. If preference storage is unavailable, the choice works for the current session and a warning appears.
-
-On minimal Linux systems, install a Chinese system font such as `fonts-noto-cjk`; see the [desktop font requirements](docs/DESKTOP.md#chinese-display-fonts).
-
-Third-party compiler/OS error details are retained verbatim after the localized application message. Native browser/OS file-picker chrome follows the operating system; it cannot all be controlled by the app. Chinese input-method composition across OS/IME combinations has not been exhaustively tested.
-
-简体中文：顶部可切换界面语言并保存偏好。切换不会翻译或覆盖文档内容；正在运行的预览会重新编译，已暂停的文档不会自动执行。
-
-## Use
-
-- **Open** / Ctrl or Cmd + O opens `.mdx`, `.md`, or `.markdown` files. This is an MDX editor: `.md` files also use MDX syntax, so literal braces and angle brackets may need escaping.
-- **Save** / Ctrl or Cmd + S writes to a user-selected file in browsers supporting File System Access (normally desktop Chromium, secure context or localhost).
-- **Save a copy** / Ctrl or Cmd + Shift + S selects a new destination. Browsers without the API download a copy; a requested download is not marked as a confirmed disk save.
-- Switch between Source, Split and Preview. CodeMirror includes undo/redo, find, line numbers, bracket completion and keyboard navigation. Syntax highlighting is Markdown-oriented, not a full MDX language service.
-- Preview waits 250 ms after the last edit. Superseded compiler workers are terminated; compilation is stopped after 5 seconds. The last good preview remains visible on compilation errors. Runtime errors appear inside the preview.
-- **Pause** removes the preview and stops compilation. **Resume** recompiles the current source. Opening a local file or restoring a recovery draft always pauses preview. Inspect the source, then select **Run preview** and explicitly confirm you trust its JavaScript. Trust is not persisted across reloads or files. The bundled welcome example runs automatically.
-- A recovery draft is written to browser localStorage after edits. For buffers above 200,000 JavaScript string units, draft writes wait for a 200 ms editing pause and word/line counts wait 100 ms, keeping full-document work out of the immediate input path. Pending recovery writes are flushed when hiding/leaving the page; an abrupt process crash can still lose the most recent pending draft. Reload restores it, without restoring file permissions. Save a copy to reconnect it to disk. Clearing browser data removes it; recovery is not a durable backup. Multiple tabs share one draft and display a conflict notice.
-
-A dot in the file row and browser title indicates unsaved edits. Replacing dirty text requires confirmation. A failed save preserves the source, and changes made while a save is running remain dirty. Existing file contents are checked before writing; external modifications cause a refusal and a suggestion to save a copy. File System Access commits on stream close; failed writes are aborted when possible. The conflict check is best effort, not an OS-level lock: another process can write between check and commit. Keep backups for valuable work.
-
-## MDX support
-
-Supports Markdown, GFM tables/task lists/strikethrough, inline JSX, JavaScript expressions, standard HTML elements and these built-ins:
-
-```mdx
-<Callout title="A note" tone="warning">
-  Content
-</Callout>
-<Badge>New</Badge>
-<Card title="An idea">Content</Card>
-<Counter />
-
-The answer is {6 \* 7}.
+```sh
+npm run desktop       # 构建并启动 Electron 桌面版
+npm run desktop:dist  # 为当前操作系统生成 release/ 下的安装包
 ```
 
-`Counter` demonstrates real React state, not a static JSX approximation. Component state resets after successful compilation. In the browser-only edition, imports and exports are explicitly rejected; arbitrary project components, package installation, relative assets, TypeScript, frontmatter and project resolution are not implemented. Built-ins are compiled into the preview runtime. Remote images/fonts/media are blocked; data images work. The preview limit is 500 KB (512,000 UTF-8 bytes), and opening files is limited to 5 MiB. Larger editor buffers can still be saved.
+桌面项目示例：先运行 `npm ci --prefix examples/project --ignore-scripts`，在应用里选择“打开项目”，信任 `examples/project` 后打开其中的 MDX。组件依赖变化后使用“重新构建”刷新。更多说明见 [桌面工作流](docs/DESKTOP.md)。
 
-See [size-limit rationale and measurements](docs/LIMITS.md) for why the 5 MiB file and 512,000-byte preview guards are retained. These are resource protections, not MDX format limits.
+## 信任与安全
 
-## Security model and limits
+**MDX 是可执行 JavaScript，不只是文本。** 打开文件或恢复草稿后，预览默认暂停，需明确确认信任才执行。预览在不带 `allow-same-origin` 的 sandbox iframe 中运行，桌面预览没有 Node / preload 权限；这不是运行恶意代码的安全服务。无限循环或内存耗尽仍可能卡住或崩溃应用。请仅运行可信文档，并将可信项目根目录限定在必要范围，不要选择包含敏感文件的整个主目录。
 
-MDX is executable JavaScript. Parsing/compilation happens in a Web Worker; document code is never evaluated by the editor or compiler worker. Evaluation occurs only in a fresh `srcdoc` iframe with `sandbox="allow-scripts"` and **without** `allow-same-origin`. Its opaque origin cannot read the editor DOM or localStorage. The parent passes generated code only through a JSON-escaped payload. There is no message listener, RPC bridge, filesystem API bridge, Electron preload, Node integration, or passed file handle.
+原生保存提供尽力而为的冲突检测，不是操作系统级文件锁；草稿是明文存储。详细行为与安全边界见 [使用指南](docs/USAGE.md) 和 [桌面安全说明](docs/DESKTOP.md#trust-and-isolation)。
 
-The preview CSP denies fetch/connect, remote scripts, frames, objects, forms, fonts and media; only inline runtime/evaluation, inline styles and data images are enabled. This is defense in depth, not a guarantee that every form of network traffic is impossible: frame self-navigation can still occur and CSP navigation restrictions are not universally enforced. The iframe cannot navigate the top-level page, open permitted popups, or access host file permissions via an application bridge. It does not get the user's GitHub or browser credentials.
+## 测试与开发
 
-**Only execute documents you trust.** An infinite loop or memory exhaustion can freeze/crash the tab; iframe execution is not a process/resource isolation guarantee. Compile timeout does not limit runtime execution. A hostile preview can spoof UI inside its own frame or navigate that frame. No claim is made that arbitrary project components or untrusted code are safe to run. Pause prevents subsequent execution, but cannot rescue a tab already blocked by an infinite loop. A future hardened edition needs a dedicated cross-site execution origin, resource controls and independent security review.
+提交 `4d269a4` 的验证快照：
 
-Recovery drafts are plaintext in the browser profile. Avoid opening sensitive documents on shared machines. Serve the host from a dedicated origin; do not cohost it with unrelated untrusted applications.
-
-## Development and verification
+- [Verify CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44084892798)：38 项 JS、2 项 Rust、46 项浏览器测试和 8 项新旧版本对比通过。
+- [Desktop CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44084892678)：Windows、macOS、Linux 源码交互、打包及打包后交互通过。
+- 覆盖中文内容、跨行语法、快速修改、滚动、撤销、Worker 故障恢复、接近 5 MiB 文件的编辑与保存。Linux 有真实 IBus 输入法覆盖；Windows/macOS 真实输入法、长期压力和完整安装向导尚未覆盖。
+- 中间一次 Windows 自动化保存校验得到未修改的原文，后续多次通过，但该次失败根因尚未证实；不宣称所有偶发问题均已解决。
 
 ```sh
 npm ci --prefix examples/project --ignore-scripts
-npm test                       # compiler, recovery, save semantics, payload tests
-npm run bench                  # repeatable compiler benchmark
-npx playwright install chromium
-npm run test:e2e                # UI, files, recovery, isolation, screenshots, input probe
+npm test
+cargo test --manifest-path core/Cargo.toml --locked
 npm run build
-npm run test:worker             # real built worker, without DOM globals
+npm run test:worker
+npx playwright install chromium
+npm run test:e2e
+npm run test:desktop   # Linux 无图形会话时需要 Xvfb
 npm run format:check
 ```
 
-Set `CHROMIUM_PATH=/path/to/chromium` to use a system Chromium. End-to-end tests produce `docs/workspace-{development,production}.png` and `docs/mobile-{development,production}.png`. The input probe opens a 105.6 KB fixture, inserts 20 characters through Playwright keyboard input, and measures each beforeinput event to the next animation frame with preview paused. It verifies the resulting recovery text. This is not hardware typing latency or INP. The included CI runs tests and build on pushes and pull requests; no deployment is configured.
+[扩展验证说明](docs/EXTENDED-VALIDATION.md) · [历史验证报告](docs/VALIDATION.md) · [Rust 核心](core/README.md)
 
-See [validation report](docs/VALIDATION.md) for measured results and outstanding checks.
+## 开源协议
 
-## Architecture
-
-- `src/main.js`: CodeMirror, document state, file UX, draft recovery and compile scheduling.
-- `src/compiler.js`, `src/worker.js`: MDX/GFM compiler and explicit module boundary.
-- `src/preview.jsx`, `src/sandbox.js`: bundled React runtime, components, iframe CSP and source transport.
-- `src/storage.js`: testable recovery and file-write semantics.
-
-The visual direction takes inspiration from the restraint of [MarkEdit](https://github.com/MarkEdit-app/MarkEdit) and [MarkText](https://github.com/marktext/marktext); no code or assets were copied. Built on [CodeMirror](https://codemirror.net/) and [MDX](https://mdxjs.com/packages/mdx/).
-
-## Repository delivery
-
-Public repository: https://github.com/kingshuoxu/inkstone-mdx
-
-This source snapshot was recovered from the latest saved Library archive (version 1) after the original cloud workspace disappeared. It includes the follow-up fix that pauses opened/recovered documents until explicit trust confirmation. The original Git history and commit `bfb22aa` were not included in that archive and could not be recovered. The public repository therefore starts with a new history; it does not claim to preserve the original commit hash.
-
-Before publication, all 22 archive files were checked for common credential patterns and personal contact information; none were detected. The archive contains no `.git`, `.env`, credential files, or runtime browser data. This check is not a formal security audit.
-
-### Rust compilation core
-
-The MDX compiler now has a shared Rust/WASM path for larger documents, with JavaScript fallback for small documents, aligned tables, footnotes and compatibility/load failures. UI, files and project bundling remain JavaScript/Electron/esbuild. Before the existing development/build commands, install Rust with the `wasm32-unknown-unknown` target and `wasm-bindgen-cli` 0.2.105, then run `npm run build:core`. Packaged apps need no Rust toolchain. See [build and compatibility details](core/README.md) and [measured performance](docs/RUST-PERFORMANCE.md). Rust does not make executing arbitrary MDX safe; all existing trust boundaries and limits still apply.
+[MIT](LICENSE) © 2026 Inkstone MDX contributors。允许使用、修改和商业分发，需保留版权及许可声明；软件按原样提供，不附带担保。第三方依赖保留各自许可证。
