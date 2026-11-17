@@ -17,6 +17,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: core
+          cache-on-failure: true
       - run: cargo install wasm-bindgen-cli --version 0.2.105 --locked
       - run: npm ci
       - run: npm run build:core

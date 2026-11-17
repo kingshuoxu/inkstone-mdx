@@ -15,9 +15,9 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
   const project = await fs.mkdtemp(path.join(os.tmpdir(), "ink-project-"));
   await fs.cp(path.resolve("examples/project"), project, { recursive: true });
   const file = path.join(project, "index.mdx");
-  const source =
-    (await fs.readFile(file, "utf8")) + "\n\n" + "plain text ".repeat(2000);
-  await fs.writeFile(file, source);
+  const source = await fs.readFile(file, "utf8");
+  const rustSource = source + "\n\n" + "plain text ".repeat(2000);
+  await fs.writeFile(file, rustSource);
   const args = process.env.INKSTONE_EXECUTABLE ? [] : [path.resolve(".")];
   args.push("--user-data-dir=" + userData);
   if (process.platform === "linux") args.push("--no-sandbox"); // CI container only; installed app never adds this.
@@ -112,7 +112,7 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
       (
         await page.evaluate(
           (source) => window.inkstoneDesktop.compile(source),
-          source,
+          rustSource,
         )
       ).engines,
     ).toContain("rust");

@@ -22,7 +22,7 @@ for (const size of [10000, 100000])
     const times = [];
     let engine;
     for (let i = 0; i < 4; i++) {
-      await editor.click();
+      await editor.focus();
       await page.keyboard.press("ControlOrMeta+a");
       const start = performance.now();
       await page.keyboard.insertText(source + "\n\nMARKER" + i);
@@ -37,7 +37,7 @@ for (const size of [10000, 100000])
     if (info.project.name === "rust" && size > 16000)
       expect(engine).toBe("rust");
     // Type while a compilation is in flight; cancellation must retain the final source.
-    await editor.click();
+    await editor.focus();
     await page.keyboard.press("ControlOrMeta+End");
     await page.keyboard.insertText("x");
     await page.waitForTimeout(260);
