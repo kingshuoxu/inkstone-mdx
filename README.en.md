@@ -6,7 +6,7 @@ A local-first, source-first MDX editor. Write Markdown and React components in a
 
 [简体中文](README.md) · [MIT License](LICENSE) · [Desktop guide](docs/DESKTOP.md) · [Validation](docs/EXTENDED-VALIDATION.md)
 
-> **v0.1.0 is released:** [download the release](https://github.com/kingshuoxu/inkstone-mdx/releases/tag/v0.1.0), including complete large-file preview. Desktop packages are unsigned and macOS builds are not notarized. Only run trusted documents and projects.
+> **v0.2.0 is released:** [download the release](https://github.com/kingshuoxu/inkstone-mdx/releases/tag/v0.2.0), including complete large-file preview, manual update checks and repository/issue shortcuts. Desktop packages are unsigned and macOS builds are not notarized. Only run trusted documents and projects.
 
 ## Live preview
 
@@ -62,7 +62,7 @@ Document structure matters: similar source sizes do not imply similar preview ti
 
 ### Desktop downloads
 
-Download platform packages from **Assets** on the [v0.1.0 Release](https://github.com/kingshuoxu/inkstone-mdx/releases/tag/v0.1.0) page. The same page provides `SHA256SUMS.txt` and `BUILD-MANIFEST.json` for verification. There is no auto-updater yet.
+Download platform packages from **Assets** on the [v0.2.0 Release](https://github.com/kingshuoxu/inkstone-mdx/releases/tag/v0.2.0) page. The same page provides `SHA256SUMS.txt` and `BUILD-MANIFEST.json` for verification. Desktop supports manual update checks and installer downloads; installation remains manual.
 
 - macOS: Apple Silicon (arm64) / Intel (x64), DMG / ZIP
 - Windows: x64, NSIS installer (EXE)
@@ -127,4 +127,4 @@ npm run format:check
 
 ### Desktop update checks
 
-Use **Help → Check for updates** to check this repository’s stable GitHub Release, then optionally download the matching installer with SHA-256 integrity verification. Checks are manual, with no background polling, automatic installation or app restart. Save your work and install manually. See [update details](docs/UPDATES.md). The published v0.1.0 predates this feature and must first be updated manually to a version containing it.
+Use **Help → Check for updates** to check this repository’s stable GitHub Release, then optionally download the matching installer with SHA-256 integrity verification. Checks are manual, with no background polling, automatic installation or app restart. Save your work and install manually. See [update details](docs/UPDATES.md). The published v0.1.0 predates this feature and must first be updated manually to v0.2.0.
