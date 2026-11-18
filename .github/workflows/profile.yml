@@ -23,8 +23,13 @@ jobs:
       - run: npm run build:core && npm run build
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test --config playwright.profile.config.js
+      - run: sha256sum core/pkg/inkstone_core_bg.wasm > /tmp/baseline-wasm.sha
       - run: python diagnostics/patch_edit_map.py
-      - run: cargo clean --manifest-path core/Cargo.toml -p markdown && npm run build:core && npm run build
+      - run: cargo clean --manifest-path core/Cargo.toml && npm run build:core && npm run build
+      - run: |
+          sha256sum core/pkg/inkstone_core_bg.wasm > /tmp/indexed-wasm.sha
+          cat /tmp/baseline-wasm.sha /tmp/indexed-wasm.sha
+          ! cmp -s /tmp/baseline-wasm.sha /tmp/indexed-wasm.sha
       - run: PROFILE_VARIANT=indexed npx playwright test --config playwright.profile.config.js
       - run: python diagnostics/compare.py
       - uses: actions/upload-artifact@v4
