@@ -1,5 +1,26 @@
 export const LANGUAGE_KEY = "inkstone.language.v1";
 export const zhCN = {
+  "Software update": "软件更新",
+  "Check for updates…": "检查更新…",
+  "Checking for updates…": "正在检查更新…",
+  "Downloading update…": "正在下载更新…",
+  "Cancel update download": "取消检查或下载更新",
+  "You are up to date.": "当前已是最新版本。",
+  "No verified installer is available for this platform.":
+    "此平台暂无可校验的安装包。",
+  "Open releases page": "打开发布页面",
+  "An update is available.": "发现新版本。",
+  "Download installer": "下载安装包",
+  "Save update installer": "保存更新安装包",
+  "Installer downloaded and checksum verified.":
+    "安装包已下载，校验和验证通过。",
+  "Show in folder": "在文件夹中显示",
+  "Save your work, then install manually. Nothing has been installed automatically.":
+    "请保存工作后手动安装。应用没有自动安装任何内容。",
+  "Update check or download failed. Nothing was installed. Please try again.":
+    "检查或下载更新失败，未安装任何内容，请重试。",
+  "Download the installer from GitHub. SHA-256 checks file integrity, not publisher authenticity. Packages may be unsigned. Save your work and install manually; the app will not quit or install anything automatically.":
+    "从 GitHub 下载安装包。SHA-256 仅校验文件完整性，不证明发布者身份；安装包可能未签名。请保存工作后手动安装，应用不会自动退出或安装。",
   "Compiling the complete document in the background. You can keep editing; no content is truncated.":
     "正在后台编译完整文档。你可以继续编辑，内容不会被截断。",
   "Preview is paused for safety. Review the source, then choose Run preview to render the complete document.":

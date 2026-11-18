@@ -124,3 +124,7 @@ npm run format:check
 ## License
 
 [MIT](LICENSE) © 2026 Inkstone MDX contributors. Use, modify and commercially distribute with the copyright and license notice retained. Provided as-is, without warranty. Dependencies retain their own licenses.
+
+### Desktop update checks
+
+Use **Help → Check for updates** to check this repository’s stable GitHub Release, then optionally download the matching installer with SHA-256 integrity verification. Checks are manual, with no background polling, automatic installation or app restart. Save your work and install manually. See [update details](docs/UPDATES.md). The published v0.1.0 predates this feature and must first be updated manually to a version containing it.

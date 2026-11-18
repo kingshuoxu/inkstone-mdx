@@ -6,6 +6,7 @@ import {
   protocol,
   session,
   Menu,
+  shell,
 } from "electron";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -24,6 +25,7 @@ import {
   checkedPreviewHTML,
   PROJECT_COMPILE_TIMEOUT_MS,
 } from "./preview-limits.mjs";
+import { createUpdateController } from "./update-controller.mjs";
 let language = "en";
 const t = (key) => translate(language, key);
 function updateMenu() {
@@ -71,6 +73,31 @@ function updateMenu() {
         role("Quit", "quit"),
       ],
     });
+  template.push({
+    label: t("Help"),
+    submenu: [
+      {
+        id: "check-for-updates",
+        label: t(
+          updates.phase === "downloading"
+            ? "Downloading update…"
+            : updates.phase === "checking"
+              ? "Checking for updates…"
+              : "Check for updates…",
+        ),
+        enabled: updates.phase === "idle",
+        click: () => {
+          void updates.run().catch(() => {});
+        },
+      },
+      {
+        id: "cancel-update",
+        label: t("Cancel update download"),
+        enabled: updates.phase !== "idle",
+        click: () => updates.cancel(),
+      },
+    ],
+  });
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 const appRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -81,6 +108,19 @@ let window,
   preview = null,
   compiling = null,
   epoch = 0;
+const updates = createUpdateController({
+  getVersion: () => app.getVersion(),
+  platform: process.platform,
+  arch: process.arch,
+  translate: t,
+  message: (options) => dialog.showMessageBox(window, options),
+  save: (options) => dialog.showSaveDialog(window, options),
+  reveal: (file) => shell.showItemInFolder(file),
+  openReleases: (url) => shell.openExternal(url),
+  stateChanged: () => {
+    if (app.isReady()) updateMenu();
+  },
+});
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "inkstone",
@@ -371,5 +411,8 @@ async function boot() {
   await window.loadURL(HOST);
 }
 app.on("window-all-closed", () => app.quit());
-app.on("before-quit", () => cancelCompile());
+app.on("before-quit", () => {
+  updates.dispose();
+  cancelCompile();
+});
 boot();
