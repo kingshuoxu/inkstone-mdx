@@ -1,15 +1,15 @@
 # Screenshot provenance
 
-These unedited PNGs come from the `browser-evidence` artifact in [Verify run 44084892798](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44084892798), commit `4d269a4c38dac37214937e3b2f3c5965b970494c`, captured by Playwright against the real production build in Chromium on November 17, 2026.
+These unedited PNGs come from the `browser-evidence` artifact in [Verify run 44262522045](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262522045), commit `cea179ea4247bfa4863548546746da19797a1832`, captured by Playwright against the real production build in Chromium on November 18, 2026.
 
-All documents are synthetic test fixtures. No personal workspace or private document is shown. UI timing labels in screenshots are individual observations, not benchmark averages.
+All documents are synthetic fixtures. No personal workspace or private document is shown. UI timing labels are individual observations, not benchmark averages; the compile label does not include all React rendering time.
 
 - `workspace-production.png`: English split editor and interactive welcome preview.
-- `chinese-production.png`: Simplified Chinese UI and a Chinese document.
-- `highlight-production.png`: approximately 5 MiB document scrolled near its end, with worker highlighting. Preview is paused; the storage-capacity warning is real and intentionally not hidden.
+- `chinese-production.png`: Simplified Chinese UI and a Chinese document with preview enabled.
+- `full-preview-rich-300k-lines.png`: 5,234,634-byte, 303,462-line document with source highlighting and full preview at its unique final heading. The final Counter has been clicked. The recovery-capacity warning is real; it does not indicate a disk-save failure.
 
 ## SHA-256
 
-- `chinese-production.png`: `389702fdf0bea146cd6026f3dec3425d69fd02411a0e3341c9b79d30a1e2b84e`
-- `highlight-production.png`: `3a13faeb1bdf1a1a1f92da3e3d1ed8d3b67bedef2d2b75e7ddc0ddcd3c77a9e0`
-- `workspace-production.png`: `e44b0d3ec0f865fa78ab258c482efb3d0924eae41dbfa1678a6b524de5459d59`
+- `workspace-production.png`: `825f1c6c7cd0d8a40fa439c7829628c9c38edb14e9466176c355544b078b495b`
+- `chinese-production.png`: `6f19bf822635cbf8bc1c0d73b113db2e020e0d3b09bbeecc61b177e2207e8b9d`
+- `full-preview-rich-300k-lines.png`: `ec743fc5656e14ca667b56456bdace0f27634f3615240eb6610e49b852fca15e`

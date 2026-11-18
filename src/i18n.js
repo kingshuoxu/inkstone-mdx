@@ -1,5 +1,18 @@
 export const LANGUAGE_KEY = "inkstone.language.v1";
 export const zhCN = {
+  "Compiling the complete document in the background. You can keep editing; no content is truncated.":
+    "正在后台编译完整文档。你可以继续编辑，内容不会被截断。",
+  "Preview is paused for safety. Review the source, then choose Run preview to render the complete document.":
+    "为安全起见，预览尚未运行。检查源码后，点击“运行预览”即可渲染完整文档。",
+  "Compiling full document · up to 120 s…": "正在编译完整文档 · 最长 120 秒…",
+  "Rendering full document…": "正在渲染完整文档…",
+  "Rendering timed out. Last successful preview is preserved; source is safe.":
+    "渲染超时，已保留上次成功预览，源码不受影响。",
+  "Preview source exceeds 5 MiB. Source can still be edited and saved.":
+    "预览源码超过 5 MiB，仍可编辑和保存源码。",
+  "Project compilation timed out after 120 seconds.":
+    "项目编译超过 120 秒，已中止。",
+
   "Large file · background syntax highlighting": "大文件模式 · 后台语法高亮",
   "Background highlighting failed. Reopen the document to retry; editing and saving are unaffected.":
     "后台高亮失败。重新打开文档可重试；编辑和保存不受影响。",

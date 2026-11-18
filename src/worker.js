@@ -5,6 +5,10 @@ self.onmessage = async ({ data }) => {
     const result = await compileWithEngine(data.source, {
       engine: import.meta.env?.VITE_COMPILER_ENGINE || "auto",
     });
+    if (new TextEncoder().encode(result.code).length > 64 * 1024 * 1024)
+      throw Error(
+        "Compiled preview exceeds 64 MiB. No partial preview was shown.",
+      );
     postMessage({
       id: data.id,
       ...result,

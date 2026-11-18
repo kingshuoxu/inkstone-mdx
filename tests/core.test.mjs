@@ -17,7 +17,7 @@ test("rejects imports and exports with actionable errors", async () => {
 });
 test("reports invalid JSX and enforces preview size limit", async () => {
   await assert.rejects(compileSource("<Broken>"));
-  await assert.rejects(compileSource("a".repeat(512001)), /500 KB/);
+  await assert.rejects(compileSource("a".repeat(5 * 1024 * 1024 + 1)), /5 MiB/);
 });
 test("recovery validates corrupt drafts and preserves Unicode", () => {
   const map = new Map();

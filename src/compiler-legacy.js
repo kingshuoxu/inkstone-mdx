@@ -1,3 +1,4 @@
+import { checkPreviewSource } from "./preview-limits.js";
 import { compile } from "@mdx-js/mdx";
 import remarkGfm from "remark-gfm";
 function noModules() {
@@ -10,10 +11,7 @@ function noModules() {
   };
 }
 export async function compileSource(source) {
-  if (new TextEncoder().encode(source).length > 512000)
-    throw new Error(
-      "Preview limit is 500 KB. Your source can still be edited and saved.",
-    );
+  checkPreviewSource(source);
   return String(
     await compile(source, {
       outputFormat: "function-body",

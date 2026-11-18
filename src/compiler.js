@@ -1,3 +1,4 @@
+import { checkPreviewSource } from "./preview-limits.js";
 import { compileSource as legacySource } from "./compiler-legacy.js";
 import { compile } from "@mdx-js/mdx";
 import remarkGfm from "remark-gfm";
@@ -23,10 +24,7 @@ export async function compileWithEngine(
   source,
   { program = false, engine = "auto" } = {},
 ) {
-  if (new TextEncoder().encode(source).length > 512000)
-    throw Error(
-      "Preview limit is 500 KB. Your source can still be edited and saved.",
-    );
+  checkPreviewSource(source);
   if (
     engine !== "javascript" &&
     (engine === "rust" || source.length > 16000) &&

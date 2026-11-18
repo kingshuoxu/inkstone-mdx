@@ -20,6 +20,11 @@ import {
 import { markdown } from "@codemirror/lang-markdown";
 import { sample } from "./sample.js";
 import { readDraft, writeDraft, saveHandle, fileText } from "./storage.js";
+import {
+  previewBytes,
+  previewTimeout,
+  LARGE_PREVIEW_BYTES,
+} from "./preview-limits.js";
 import { previewDocument } from "./sandbox.js";
 import runtime from "./runtime.generated.txt?raw";
 import "./style.css";
@@ -58,6 +63,17 @@ let source = draft?.source ?? sample,
   timer,
   timeout,
   revision = 0;
+let compileBusy = false,
+  activeCompileId = -1,
+  queuedReady = false;
+let pendingFrame = null,
+  renderTimer = null,
+  previewStarted = 0;
+function discardPendingPreview() {
+  clearTimeout(renderTimer);
+  pendingFrame?.frame.remove();
+  pendingFrame = null;
+}
 $("#app").innerHTML =
   `<aside class="sidebar"><a class="brand" href="#" aria-label="Inkstone home"><span class="brand-mark">i.</span>inkstone<span class="beta">MDX</span></a><div class="section-label">WORKSPACE</div><div class="file-item"><span>◈</span><span id="side-name"></span><i id="dirty-dot"></i></div><button id="open-side" class="sidebar-button">＋ Open a document</button><div class="sidebar-bottom"><div class="leaf">❧</div><strong>A place for your next idea.</strong><p>Plain text. Live components.<br>A little room to think.</p><button id="help">Components & help ↗</button><div class="local"><span></span> Local workspace</div></div></aside><main class="workspace"><header><div class="breadcrumb">Workspace <span>/</span> <strong id="file-name"></strong></div><div class="actions"><button id="open">Open <kbd>⌘ O</kbd></button><button id="copy">Save a copy</button><button id="save" class="primary">Save <kbd>⌘ S</kbd></button></div></header><section class="workspace-title"><div><div class="eyebrow">MAKE ROOM FOR YOUR IDEAS</div><h1>Your words, with possibility.</h1></div><div class="view-toggle" role="group" aria-label="Workspace view"><button data-view="source">Source</button><button data-view="split" aria-pressed="true">Split</button><button data-view="preview">Preview</button></div></section><div id="notice" role="status" hidden></div><div class="panes" data-mode="split"><section class="source-pane"><div class="pane-head"><span><b>◧</b> SOURCE</span><span>MDX <i>·</i> UTF-8</span></div><div id="editor"></div></section><section class="preview-pane"><div class="pane-head"><span><b>◉</b> LIVE PREVIEW</span><span id="compile-status">Preparing…</span><button id="pause">Pause</button></div><div id="preview-error" role="alert" hidden></div><div id="preview"></div></section></div><footer><span id="stats"></span><span id="syntax-status" hidden></span><span id="draft-status"></span><span>Sandboxed preview <b>◇</b></span></footer></main><input type="file" id="file-input" accept=".mdx,.md,.markdown,text/plain" hidden><dialog><button id="close-help" aria-label="Close help">×</button><div class="eyebrow">A LITTLE MORE POSSIBILITY</div><h2>Markdown meets components.</h2><p>Use Markdown, GFM tables, JSX, and JavaScript expressions. Built-in components require no imports:</p><pre>&lt;Callout title="Note" tone="warning"&gt;Text&lt;/Callout&gt;\n&lt;Badge&gt;New&lt;/Badge&gt;\n&lt;Card title="Idea"&gt;Content&lt;/Card&gt;\n&lt;Counter /&gt;</pre><p>Browser mode rejects imports and exports. Desktop mode supports local components and installed browser-compatible dependencies after workspace trust. Preview resets component state after each compile. Remote assets are blocked; data images work.</p><p>The preview has an opaque origin with no file handles or app bridge. Executable MDX can still hang its browser tab or navigate its own frame: only run code you trust. Pause stops previews while you edit.</p><p>Save overwrites only a file you selected, with a conflict check. Unsupported browsers download a copy. Recovery drafts are stored in this browser; they are not a backup. Avoid simultaneous editing in multiple tabs.</p></dialog>`;
 const languageLabel = document.createElement("label");
@@ -113,98 +129,216 @@ function pauseUntrustedPreview() {
   requiresTrust = true;
   schedule();
   $("#preview").replaceChildren();
+  const placeholder = document.createElement("p");
+  placeholder.className = "preview-placeholder";
+  placeholder.textContent = t(
+    "Preview is paused for safety. Review the source, then choose Run preview to render the complete document.",
+  );
+  $("#preview").append(placeholder);
   desktop?.clearPreview();
   ui("#pause", "Run preview");
   ui("#compile-status", "Paused · untrusted document");
 }
+function finishCompile(id) {
+  if (activeCompileId !== id) return false;
+  clearTimeout(timeout);
+  workerBusy = false;
+  compileBusy = false;
+  activeCompileId = -1;
+  if (queuedReady && !paused) {
+    queuedReady = false;
+    queueMicrotask(run);
+  }
+  return id === revision && !paused;
+}
 function schedule() {
   clearTimeout(timer);
-  if (
-    workerBusy ||
-    paused ||
-    import.meta.env.VITE_COMPILER_ENGINE === "javascript"
-  ) {
-    worker?.terminate();
-    worker = null;
-    workerBusy = false;
-  }
-  clearTimeout(timeout);
+  discardPendingPreview();
   revision++;
-  if (paused) return;
+  queuedReady = false;
+  const large =
+    source.length > LARGE_PREVIEW_BYTES ||
+    previewBytes(source) > LARGE_PREVIEW_BYTES;
+  // Large-file edits are coalesced. Let one already-running compile settle,
+  // then compile only the latest revision after the quiet period.
+  // Pause/file changes and transitions to small documents cancel immediately.
+  if (paused || !large) {
+    desktop?.cancelCompile?.().catch(() => {});
+    if (
+      workerBusy ||
+      paused ||
+      import.meta.env.VITE_COMPILER_ENGINE === "javascript"
+    ) {
+      worker?.terminate();
+      worker = null;
+    }
+    clearTimeout(timeout);
+    workerBusy = false;
+    compileBusy = false;
+    activeCompileId = -1;
+  }
+  if (paused) {
+    $("#compile-status").dataset.state = "paused";
+    return;
+  }
+  $("#compile-status").dataset.state = "waiting";
   ui("#compile-status", "Waiting…");
-  timer = setTimeout(run, 250);
+  timer = setTimeout(
+    () => {
+      if (compileBusy) queuedReady = true;
+      else run();
+    },
+    large ? 1500 : 250,
+  );
 }
-async function showPreview(html, id, ms) {
+async function showPreview(previewRuntime, code, id, ms) {
+  const token = crypto.randomUUID();
+  const html = previewDocument(previewRuntime, code, language, {
+    token,
+    large: previewBytes(source) > LARGE_PREVIEW_BYTES,
+  });
   const url = desktop ? await desktop.preview(html) : null;
   if (id !== revision || paused) return;
-  $("#preview-error").hidden = true;
+  discardPendingPreview();
   const frame = document.createElement("iframe");
   frame.title = t("MDX preview");
   frame.setAttribute("sandbox", "allow-scripts");
   frame.setAttribute("referrerpolicy", "no-referrer");
+  // Keep the last successful view until the new full document commits.
+  // visibility:hidden (not display:none) keeps the same viewport/layout.
+  frame.style.cssText = "position:absolute;inset:0;visibility:hidden";
+  frame.dataset.pending = "true";
+  pendingFrame = { frame, token, id, ms };
+  ui("#compile-status", "Rendering full document…");
+  $("#compile-status").dataset.state = "rendering";
   if (url) frame.src = url;
   else frame.srcdoc = html;
-  $("#preview").replaceChildren(frame);
-  ui("#compile-status", "{ms} ms compile", { ms: Math.round(ms) });
+  $("#preview").append(frame);
+  renderTimer = setTimeout(() => {
+    if (pendingFrame?.id !== id) return;
+    discardPendingPreview();
+    showError(
+      "Rendering timed out. Last successful preview is preserved; source is safe.",
+    );
+  }, 60000);
 }
+window.addEventListener("message", (event) => {
+  const pending = pendingFrame;
+  if (
+    !pending ||
+    event.source !== pending.frame.contentWindow ||
+    event.data?.type !== "inkstone-preview" ||
+    event.data.token !== pending.token ||
+    pending.id !== revision ||
+    paused
+  )
+    return;
+  if (event.data.state === "error") {
+    discardPendingPreview();
+    showError(String(event.data.message));
+    return;
+  }
+  if (event.data.state !== "ready") return;
+  clearTimeout(renderTimer);
+  pendingFrame = null;
+  pending.frame.style.cssText = "";
+  delete pending.frame.dataset.pending;
+  $("#preview").replaceChildren(pending.frame);
+  $("#preview-error").hidden = true;
+  $("#compile-status").dataset.state = "ready";
+  $("#compile-status").dataset.previewMs = String(
+    Math.round(performance.now() - previewStarted),
+  );
+  ui("#compile-status", "{ms} ms compile", { ms: Math.round(pending.ms) });
+});
 async function run() {
+  if (paused) return;
+  if (compileBusy) {
+    queuedReady = true;
+    return;
+  }
   const id = revision;
+  compileBusy = true;
+  activeCompileId = id;
+  const placeholder = $("#preview .preview-placeholder");
+  if (placeholder)
+    placeholder.textContent = t(
+      "Compiling the complete document in the background. You can keep editing; no content is truncated.",
+    );
+  previewStarted = performance.now();
+  $("#compile-status").dataset.state = "compiling";
+  $("#preview-error").hidden = true;
   ui("#compile-status", "Compiling…");
   if (desktop && project) {
     try {
       const result = await desktop.compile(source);
-      if (id !== revision || paused) return;
+      if (!finishCompile(id)) return;
       const cssSetup = `const style=document.createElement('style');style.textContent=${JSON.stringify(result.css)};document.head.append(style);`;
-      await showPreview(
-        previewDocument(cssSetup + result.js, "", language),
-        id,
-        result.ms,
-      );
+      await showPreview(cssSetup + result.js, "", id, result.ms);
     } catch (error) {
+      finishCompile(id);
       if (id === revision && !paused) showError(error.message);
     }
     return;
   }
-  worker ||= new Worker(new URL("./worker.js", import.meta.url), {
-    type: "module",
-  });
+  try {
+    worker ||= new Worker(new URL("./worker.js", import.meta.url), {
+      type: "module",
+    });
+  } catch (error) {
+    worker = null;
+    if (finishCompile(id))
+      showError("Compiler failed. Edit to retry; source is safe.");
+    return;
+  }
   const active = worker;
+  const releaseAfterCompile = previewBytes(source) > LARGE_PREVIEW_BYTES;
   workerBusy = true;
   timeout = setTimeout(() => {
+    if (active !== worker || activeCompileId !== id) return;
     active.terminate();
     worker = null;
-    workerBusy = false;
+    if (!finishCompile(id)) return;
     showError(
       "Compilation timed out. Source is safe; shorten the document or pause preview.",
     );
-  }, 5000);
+  }, previewTimeout(source));
   active.onmessage = ({ data }) => {
-    if (data.id !== revision) return;
-    clearTimeout(timeout);
-    workerBusy = false;
+    if (active !== worker || activeCompileId !== data.id) return;
+    if (releaseAfterCompile) {
+      // WASM linear memory does not shrink after freeing a large syntax tree.
+      // Release this worker before constructing the full React/DOM preview.
+      active.terminate();
+      worker = null;
+    }
+    if (!finishCompile(data.id)) return;
     $("#compile-status").dataset.engine = data.engine || "error";
     if (data.error) {
       showError(data.error);
       return;
     }
-    showPreview(
-      previewDocument(runtime, data.code, language),
-      id,
-      data.ms,
-    ).catch((error) => {
+    showPreview(runtime, data.code, id, data.ms).catch((error) => {
       if (id === revision) showError(error.message);
     });
   };
   active.onerror = () => {
-    clearTimeout(timeout);
+    if (active !== worker || activeCompileId !== id) return;
     active.terminate();
     worker = null;
-    workerBusy = false;
+    if (!finishCompile(id)) return;
     showError("Compiler failed. Edit to retry; source is safe.");
   };
-  active.postMessage({ id, source });
+  try {
+    active.postMessage({ id, source });
+  } catch (error) {
+    active.terminate();
+    worker = null;
+    if (finishCompile(id))
+      showError("Compiler failed. Edit to retry; source is safe.");
+  }
 }
 function showError(error) {
+  $("#compile-status").dataset.state = "error";
   $("#preview-error").hidden = false;
   ui("#preview-error", "Preview error: {error}", {
     error: error,

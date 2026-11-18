@@ -6,7 +6,7 @@ A local-first, source-first MDX editor. Write Markdown and React components in a
 
 [简体中文](README.md) · [MIT License](LICENSE) · [Desktop guide](docs/DESKTOP.md) · [Validation](docs/EXTENDED-VALIDATION.md)
 
-> **Development preview:** this README describes `main`; [PR #3](https://github.com/kingshuoxu/inkstone-mdx/pull/3) has been merged, but no formal release has been published. Desktop packages are unsigned and macOS builds are not notarized. Only run trusted documents and projects.
+> **Development preview:** this README describes the full large-file preview branch in [PR #4](https://github.com/kingshuoxu/inkstone-mdx/pull/4), not yet merged or formally released. Desktop packages are unsigned and macOS builds are not notarized. Only run trusted documents and projects.
 
 ## Live preview
 
@@ -29,38 +29,31 @@ The normal working view below has preview enabled: source on the left, the rende
 
 ![Simplified Chinese interface](docs/screenshots/chinese-production.png)
 
-### Large-file editing test, not a preview demo
+### Complete large-file preview
 
-> **Editing performance is not preview capacity.** The roughly 5 MiB fixture below exceeds the current **512,000 UTF-8 byte** preview limit. It tests editing and highlighting only. Preview was paused, so the right pane is empty; clicking “Run preview” cannot bypass the size limit. See the two screenshots above for normal rendered previews.
+A real test fixture of roughly 5 MiB and 303,462 lines keeps source highlighting and a complete preview. Both panes are scrolled to the document end; the final Counter has been clicked successfully.
 
-<details>
-<summary>Show the large-file highlighting stress test (preview paused)</summary>
+![Highlighted source and complete interactive preview at the end of a roughly 5 MiB document](docs/screenshots/full-preview-rich-300k-lines.png)
 
-![Worker highlighting in a roughly 5 MiB file only; preview is paused and the right pane is empty](docs/screenshots/highlight-production.png)
-
-The storage warning means the fixture exceeded the browser's recovery-draft quota, not that saving a file to disk failed. Save valuable work to disk.
-
-</details>
-
-These are real Chromium screenshots of production build `4d269a4`, not mockups. [Screenshot provenance](docs/screenshots/README.md).
+All screenshots above show production build `cea179e` running in Chromium, not mockups. Documents are synthetic fixtures. See [screenshot provenance and checksums](docs/screenshots/README.md).
 
 ## Measured performance
 
-Same GitHub Actions Linux runner, Chromium, production builds, approximately **5 MiB**, **preview paused**, 20 automated input samples per case. The metric is `beforeinput` to the next animation frame. Baseline `19f4d5b` uses main-thread highlighting; `4d269a4` keeps highlighting in a worker.
+Complete-preview observations for `cea179e` on a GitHub Actions Linux runner, Chromium, production build. **These include compilation and React readiness, not just parsing.** Each fixture is a single test observation, not a repeated-run median.
 
-| Document              | Baseline median / p95 | Worker median / p95 |
-| --------------------- | --------------------: | ------------------: |
-| Long plain paragraphs |      292.5 / 303.9 ms |   **8.4 / 16.2 ms** |
-| Richly formatted text |        47.5 / 64.2 ms |   **8.3 / 15.9 ms** |
+| Document                          | UTF-8 bytes |   Lines | Compile start to React ready | After enabling preview to observed ready | DOM elements |
+| --------------------------------- | ----------: | ------: | ---------------------------: | ---------------------------------------: | -----------: |
+| Long plain paragraphs             |   5,231,639 |   2,762 |                      1.504 s |                                  3.384 s |        1,391 |
+| Rich headings, emphasis and links |   5,234,634 | 303,462 |                     13.741 s |                                 15.768 s |      455,193 |
 
-[Comparison CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44084892798). These are editing-response observations, **not physical keyboard latency, full live-preview performance or a frame-rate guarantee**.
+[Corresponding Verify CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262522045). Both cases verify the unique final heading, the final Counter interaction and a new heading after editing. The Rust parser's indexed edit map reduces repeated linear scans in long documents; worker highlighting avoids making input wait for full-document highlighting.
 
-A separate recorded Linux / Node 24 compiler benchmark measured dense ~100 KB MDX warm compilation at 651.8 → 198.3 ms and dense ~500 KB at 3342.1 → 2994.8 ms. Rust is not universally faster. See [the full Rust report](docs/RUST-PERFORMANCE.md) for cold starts, memory and measurement conditions.
+Document structure matters: similar source sizes do not imply similar preview times. Large React trees still take time and memory. These observations are not device-independent latency or frame-rate guarantees. See [full-preview boundaries](docs/LARGE-PREVIEW.md) and the [historical Rust compiler benchmark](docs/RUST-PERFORMANCE.md).
 
 ### Current boundaries
 
 - Colors can arrive briefly after opening, scrolling or editing. The large-file worker path does not provide syntax-driven folding or indentation.
-- Opening files is capped at **5 MiB**, as are desktop save/IPC operations. Preview source is capped at **512,000 UTF-8 bytes**. See [limits](docs/LIMITS.md).
+- Opening files is capped at **5 MiB**, as are desktop save/IPC operations. Complete preview source is also capped at **5 MiB**. See [limits](docs/LIMITS.md).
 - Recovery depends on local storage quota; save valuable work to disk.
 - Web mode rejects project imports. Desktop does not support Node native addons, server-only dependencies or arbitrary project plugins. See [supported project boundaries](docs/DESKTOP.md#supported-boundaries).
 - `.md` files are also parsed as MDX, not a plain-Markdown compatibility mode. Literal braces or angle brackets may need escaping.
@@ -69,16 +62,16 @@ A separate recorded Linux / Node 24 compiler benchmark measured dense ~100 KB MD
 
 ### Desktop test packages
 
-Choose a successful run in the [Desktop workflow](https://github.com/kingshuoxu/inkstone-mdx/actions/workflows/desktop.yml), then download the platform artifact. [This verified snapshot](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44084892678) builds macOS DMG/ZIP, Windows NSIS and Linux AppImage/DEB packages. Artifacts usually require GitHub login and expire. There is no formal release or auto-updater yet.
+Download platform artifacts from [the verified cea179e snapshot](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262521948) for macOS DMG/ZIP, Windows NSIS and Linux AppImage/DEB packages. This is the PR #4 code described here, not a release from main. Artifacts usually require GitHub login and expire. There is no formal release or auto-updater yet.
 
 Installed apps do not require Node or Rust. Packages are unsigned/not notarized; successful packaging does not verify every installer-wizard interaction.
 
 ### Run from source
 
-Requires Node.js **22.12+** (CI uses Node 24), npm, stable Rust and platform build tools. Check out the default main branch:
+Requires Node.js **22.12+** (CI uses Node 24), npm, stable Rust and platform build tools. Check out the development branch described here (not yet merged into main):
 
 ```sh
-git clone https://github.com/kingshuoxu/inkstone-mdx.git
+git clone --branch feat/large-file-preview https://github.com/kingshuoxu/inkstone-mdx.git
 cd inkstone-mdx
 rustup target add wasm32-unknown-unknown
 cargo install wasm-bindgen-cli --version 0.2.105 --locked
@@ -104,12 +97,11 @@ File conflict checks are best effort, not OS-level locks. Recovery drafts are pl
 
 ## Development and verification
 
-Verified snapshot `4d269a4`:
+Verified code snapshot `cea179e` (subsequent documentation changes do not change the tested code):
 
-- [Verify CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44084892798): 38 JS tests, 2 Rust tests, 46 browser tests and 8 baseline/current comparisons passed.
-- [Desktop CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44084892678): source interaction, packaging and packaged-app interaction passed on Windows, macOS and Linux.
-- Coverage includes Chinese text, multiline syntax, rapid edits, scrolling, undo, worker failure recovery and near-5 MiB editing/saving. Linux has real IBus coverage. Real Windows/macOS IMEs, long-duration stress and complete installer wizards remain untested.
-- One intermediate Windows automated save check retained the original text; subsequent runs passed, but that failure's root cause remains unproven.
+- [Verify CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262522045): 39 JS tests, project Rust tests, 62 browser tests (plus 2 expected skips) and 8 performance comparisons passed; all 178 upstream Markdown tests passed, with identical parser-output hashes for 36 comparisons against upstream.
+- [Desktop CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262521948): source interaction, packaging and packaged-app interaction passed on Windows, macOS and Linux.
+- Coverage includes complete large-file endings, component interactions, subsequent edits, Unicode, references and footnotes, obsolete-result cancellation, highlighting and near-5 MiB saves. Linux has real IBus coverage. Real Windows/macOS IMEs, long-duration stress and full installer wizards remain untested.
 
 ```sh
 npm ci --prefix examples/project --ignore-scripts

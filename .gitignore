@@ -11,3 +11,5 @@ core/target/
 core/pkg/
 src/core.generated.js
 baseline/
+
+docs/parser-regression/

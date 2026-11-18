@@ -8,7 +8,7 @@ import { compileSource } from "../src/compiler.js";
 import { bundleProject } from "../desktop/bundle.mjs";
 import { writeDraft, readDraft } from "../src/storage.js";
 const fileCap = 5 * 1024 * 1024,
-  previewCap = 512000;
+  previewCap = fileCap;
 const exactChinese = (bytes) =>
   "中".repeat(Math.floor(bytes / 3)) + "x".repeat(bytes % 3);
 test("5 MiB native source guard counts UTF-8 bytes, accepting boundary and refusing one extra byte", () => {
@@ -35,18 +35,18 @@ test("native opening and atomic save/copy round-trip exactly 5 MiB; oversized op
     await fs.rm(root, { recursive: true, force: true });
   }
 });
-test("browser and project preview accept 512000 UTF-8 bytes and reject 512001 before compilation", async () => {
+test("browser and project preview accept 5 MiB UTF-8 bytes and reject one extra byte before compilation", async () => {
   const source = exactChinese(previewCap);
   const code = await compileSource(source);
   assert.ok(code.includes("中"));
-  await assert.rejects(compileSource(source + "x"), /500 KB/);
+  await assert.rejects(compileSource(source + "x"), /5 MiB/);
   const root = path.resolve("examples/project"),
     file = path.join(root, "index.mdx");
   const result = await bundleProject({ root, file, source });
   assert.ok(result.js.length > 0);
   await assert.rejects(
     bundleProject({ root, file, source: source + "x" }),
-    /500 KB/,
+    /5 MiB/,
   );
 });
 test("recovery quota failure is surfaced and does not silently replace the previous draft", () => {

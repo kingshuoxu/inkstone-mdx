@@ -20,6 +20,7 @@ jobs:
           cache-on-failure: true
       - run: cargo install wasm-bindgen-cli --version 0.2.105 --locked
       - run: npm ci
+      - run: bash scripts/parser-regression/run.sh
       - run: npm run build:core
       - run: cargo test --manifest-path core/Cargo.toml --locked
       - run: npm ci --prefix examples/project --ignore-scripts
@@ -44,4 +45,6 @@ jobs:
           path: |
             docs/*.png
             docs/core-benchmark.jsonl
+            docs/parser-regression/
+            docs/full-preview-*.json
             test-results/

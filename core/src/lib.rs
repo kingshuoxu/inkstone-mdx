@@ -41,8 +41,15 @@ fn normalize_tables(node: &mut mdxjs::hast::Node) {
 
 // Compiles data only. No filesystem, network, JavaScript evaluation or plugin hooks.
 fn compile_inner(source: &str, program: bool) -> Result<String, String> {
-    if source.len() > 512_000 {
-        return Err("Preview source exceeds 512000 UTF-8 bytes".into());
+    compile_inner_with_reference_locations(source, program, false)
+}
+fn compile_inner_with_reference_locations(
+    source: &str,
+    program: bool,
+    reference_locations: bool,
+) -> Result<String, String> {
+    if source.len() > 5 * 1024 * 1024 {
+        return Err("Preview source exceeds 5 MiB".into());
     }
     let options = mdxjs::Options::gfm();
     let tree = mdxjs::mdast_util_from_mdx(source, &options).map_err(|e| e.to_string())?;
@@ -63,7 +70,16 @@ fn compile_inner(source: &str, program: bool) -> Result<String, String> {
         .map_err(|e| e.to_string())?;
     mdxjs::mdx_plugin_recma_document(&mut output, &options, Some(&location))
         .map_err(|e| e.to_string())?;
-    mdxjs::mdx_plugin_recma_jsx_rewrite(&mut output, &options, Some(&location), &explicit)
+    // In production mode, JSX rewrite does not emit reference locations.
+    // Upstream nevertheless resolves every tag's line with a linear scan.
+    // Avoid O(tags * lines) work while retaining locations in parsing and
+    // the preceding transforms (and checking byte-for-byte output in tests).
+    mdxjs::mdx_plugin_recma_jsx_rewrite(
+        &mut output,
+        &options,
+        if reference_locations { Some(&location) } else { None },
+        &explicit,
+    )
         .map_err(|e| e.to_string())?;
     if program {
         return Ok(to_code(&output.module));
@@ -121,6 +137,22 @@ mod tests {
         let code = compile_inner("# 中文\n\n<Badge>{1 + 2}</Badge>\n\n~~old~~", false).unwrap();
         assert!(code.contains("中文") && code.contains("Badge") && code.contains("del"));
         assert!(code.contains("return {default:"));
+    }
+    #[test]
+    fn production_location_elision_preserves_generated_code() {
+        let cases = [
+            "# 中文\n\n<Badge>{1 + 2}</Badge>\n\n<Parts.Note>nested</Parts.Note>".to_owned(),
+            "# Heading\n\n**bold** [link](https://example.com)\n\n<Counter />\n".repeat(200),
+            "import { Thing } from './thing.jsx'\n\nexport const value = 2\n\n<Thing>{value}</Thing>".to_owned(),
+        ];
+        for source in cases {
+            for program in [false, true] {
+                assert_eq!(
+                    compile_inner_with_reference_locations(&source, program, false),
+                    compile_inner_with_reference_locations(&source, program, true),
+                );
+            }
+        }
     }
     #[test]
     fn module_policy() {
