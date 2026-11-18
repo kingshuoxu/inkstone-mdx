@@ -6,7 +6,7 @@ A local-first, source-first MDX editor. Write Markdown and React components in a
 
 [简体中文](README.md) · [MIT License](LICENSE) · [Desktop guide](docs/DESKTOP.md) · [Validation](docs/EXTENDED-VALIDATION.md)
 
-> **Development preview:** this README describes the full large-file preview branch in [PR #4](https://github.com/kingshuoxu/inkstone-mdx/pull/4), not yet merged or formally released. Desktop packages are unsigned and macOS builds are not notarized. Only run trusted documents and projects.
+> **Development preview:** full large-file preview has been merged into main via [PR #4](https://github.com/kingshuoxu/inkstone-mdx/pull/4), but has not been formally released. Desktop packages are unsigned and macOS builds are not notarized. Only run trusted documents and projects.
 
 ## Live preview
 
@@ -62,16 +62,16 @@ Document structure matters: similar source sizes do not imply similar preview ti
 
 ### Desktop test packages
 
-Download platform artifacts from [the verified cea179e snapshot](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262521948) for macOS DMG/ZIP, Windows NSIS and Linux AppImage/DEB packages. This is the PR #4 code described here, not a release from main. Artifacts usually require GitHub login and expire. There is no formal release or auto-updater yet.
+Download platform artifacts from [the verified cea179e snapshot](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262521948) for macOS DMG/ZIP, Windows NSIS and Linux AppImage/DEB packages. This build validates the PR #4 code now merged into main, but is not a formal release. Artifacts usually require GitHub login and expire. There is no formal release or auto-updater yet.
 
 Installed apps do not require Node or Rust. Packages are unsigned/not notarized; successful packaging does not verify every installer-wizard interaction.
 
 ### Run from source
 
-Requires Node.js **22.12+** (CI uses Node 24), npm, stable Rust and platform build tools. Check out the development branch described here (not yet merged into main):
+Requires Node.js **22.12+** (CI uses Node 24), npm, stable Rust and platform build tools. Check out main:
 
 ```sh
-git clone --branch feat/large-file-preview https://github.com/kingshuoxu/inkstone-mdx.git
+git clone --branch main https://github.com/kingshuoxu/inkstone-mdx.git
 cd inkstone-mdx
 rustup target add wasm32-unknown-unknown
 cargo install wasm-bindgen-cli --version 0.2.105 --locked

@@ -6,7 +6,7 @@
 
 [English](README.en.md) · [MIT License](LICENSE) · [桌面版指南](docs/DESKTOP.md) · [测试与限制](docs/EXTENDED-VALIDATION.md)
 
-> **开发预览版**：本页描述完整大文件预览开发分支；[PR #4](https://github.com/kingshuoxu/inkstone-mdx/pull/4) 尚未合并或正式发布。桌面测试包未签名，macOS 未公证。请只运行可信的 MDX 文档与项目。
+> **开发预览版**：完整大文件预览已通过 [PR #4](https://github.com/kingshuoxu/inkstone-mdx/pull/4) 合并到 main，尚未正式发布。桌面测试包未签名，macOS 未公证。请只运行可信的 MDX 文档与项目。
 
 ## 页面预览
 
@@ -62,7 +62,7 @@
 
 ### 下载桌面测试包
 
-在 [cea179e 的三平台构建](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262521948) 的 **Artifacts** 下载对应平台测试包。该构建与本页描述的 PR #4 代码一致，并非 main 正式发布。下载通常需要登录 GitHub，产物会过期；当前没有正式 Release 或自动更新器。
+在 [cea179e 的三平台构建](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262521948) 的 **Artifacts** 下载对应平台测试包。该构建验证了现已合入 main 的 PR #4 代码，但不是正式 Release。下载通常需要登录 GitHub，产物会过期；当前没有正式 Release 或自动更新器。
 
 - macOS：DMG / ZIP
 - Windows：NSIS 安装程序
@@ -72,10 +72,10 @@
 
 ### 从源码启动
 
-需要 Node.js **22.12+**（CI 使用 Node 24）、npm、稳定版 Rust 工具链及系统构建工具。获取本页对应的开发分支（尚未合并到 main）：
+需要 Node.js **22.12+**（CI 使用 Node 24）、npm、稳定版 Rust 工具链及系统构建工具。获取 main 分支：
 
 ```sh
-git clone --branch feat/large-file-preview https://github.com/kingshuoxu/inkstone-mdx.git
+git clone --branch main https://github.com/kingshuoxu/inkstone-mdx.git
 cd inkstone-mdx
 rustup target add wasm32-unknown-unknown
 cargo install wasm-bindgen-cli --version 0.2.105 --locked
