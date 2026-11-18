@@ -48,8 +48,9 @@ test("native Help shortcuts use fixed URLs, localize and recover from failure", 
     ).toBe(false);
     await page.locator("#language").selectOption("zh-CN");
     expect(
-      await app.evaluate(({ Menu }) =>
-        Menu.getApplicationMenu().getMenuItemById("project-issue").label,
+      await app.evaluate(
+        ({ Menu }) =>
+          Menu.getApplicationMenu().getMenuItemById("project-issue").label,
       ),
     ).toBe("反馈问题…");
     await app.evaluate(() => {
