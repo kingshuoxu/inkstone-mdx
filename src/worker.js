@@ -10,11 +10,14 @@ self.onmessage = async ({ data }) => {
       throw Error(
         "Compiled preview exceeds 64 MiB. No partial preview was shown.",
       );
+    const measuredMs=performance.now()-start;
+    const codeHash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(result.code))),b=>b.toString(16).padStart(2,"0")).join("");
     postMessage({
+      codeHash,
       rustStages: globalThis.rustStages, workerStart:start, workerEnd:performance.now(),
       id: data.id,
       ...result,
-      ms: performance.now() - start,
+      ms: measuredMs,
     });
   } catch (e) {
     postMessage({ id: data.id, error: e.message });

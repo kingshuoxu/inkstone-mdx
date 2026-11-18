@@ -324,7 +324,7 @@ async function run() {
       showError(data.error);
       return;
     }
-    Object.assign(window.profile,{compileMs:data.ms,workerStart:data.workerStart,workerEnd:data.workerEnd,rustStages:data.rustStages,workerReceived:performance.now(),codeChars:data.code.length});
+    Object.assign(window.profile,{compileMs:data.ms,codeHash:data.codeHash,workerStart:data.workerStart,workerEnd:data.workerEnd,rustStages:data.rustStages,workerReceived:performance.now(),codeChars:data.code.length});
     showPreview(runtime, data.code, id, data.ms).catch((error) => {
       if (id === revision) showError(error.message);
     });

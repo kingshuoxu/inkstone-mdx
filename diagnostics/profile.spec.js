@@ -18,6 +18,7 @@ for (const [kind,bytes,repeat] of [['rich',5*1024*1024,3],['long',5*1024*1024,1]
  await expect(page.locator('#compile-status')).toHaveAttribute('data-state','ready',{timeout:180000});
  await page.waitForFunction(()=>window.profile?.twoFrames);
  const result=await page.evaluate(()=>structuredClone(window.profile));
+ result.variant=process.env.PROFILE_VARIANT || "baseline";
  const metrics=await cdp.send('Performance.getMetrics');
  const traceComplete=new Promise(resolve=>cdp.once('Tracing.tracingComplete',resolve));
  await cdp.send('Tracing.end');
@@ -26,10 +27,13 @@ for (const [kind,bytes,repeat] of [['rich',5*1024*1024,3],['long',5*1024*1024,1]
  const summary={};for(const e of events)if(e.ph==='X'&&['Layout','UpdateLayoutTree','Paint','PrePaint','ParseHTML','CompileScript','EvaluateScript','FunctionCall','RunTask','V8.GCCompactor','MinorGC','MajorGC'].includes(e.name)){const x=summary[e.name]||={ms:0,count:0};x.ms+=(e.dur||0)/1000;x.count++;}
  const frame=page.frameLocator('iframe:not([data-pending])');
  await expect(frame.locator('h1').last()).toHaveText('UNIQUE FULL DOCUMENT END');
+ await frame.locator('.counter').click();
+ await expect(frame.locator('.counter')).toHaveText(/Clicked 1 times/);
+ await expect(frame.locator('.badge')).toHaveText('42');
  const counts=await page.frames().find(f=>f!==page.mainFrame()).evaluate(()=>({nodes:document.querySelectorAll('*').length,headings:document.querySelectorAll('h1').length}));
  Object.assign(result,{kind,bytes:Buffer.byteLength(source),run,counts,traceSummary:summary,cdpMetrics:metrics.metrics});
- await writeFile(`diagnostics/result-${kind}-${bytes}-${run}.json`,JSON.stringify(result,null,2));
- await writeFile(`diagnostics/trace-${kind}-${bytes}-${run}.json`,trace);
+ await writeFile(`diagnostics/result-${result.variant}-${kind}-${bytes}-${run}.json`,JSON.stringify(result,null,2));
+ await writeFile(`diagnostics/trace-${result.variant}-${kind}-${bytes}-${run}.json`,trace);
  console.log('PROFILE_RESULT',JSON.stringify(result));
  });
 }

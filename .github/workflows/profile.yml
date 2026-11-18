@@ -5,7 +5,7 @@ permissions:
 jobs:
   profile:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,6 +23,10 @@ jobs:
       - run: npm run build:core && npm run build
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test --config playwright.profile.config.js
+      - run: python diagnostics/patch_edit_map.py
+      - run: cargo clean --manifest-path core/Cargo.toml -p markdown && npm run build:core && npm run build
+      - run: PROFILE_VARIANT=indexed npx playwright test --config playwright.profile.config.js
+      - run: python diagnostics/compare.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
