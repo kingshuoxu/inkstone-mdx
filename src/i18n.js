@@ -1,5 +1,9 @@
 export const LANGUAGE_KEY = "inkstone.language.v1";
 export const zhCN = {
+  "GitHub repository": "GitHub 仓库",
+  "Report an issue…": "反馈问题…",
+  "Could not open the browser. Please try again.": "无法打开浏览器，请重试。",
+  "Repository and feedback": "仓库与反馈",
   "Software update": "软件更新",
   "Check for updates…": "检查更新…",
   "Checking for updates…": "正在检查更新…",

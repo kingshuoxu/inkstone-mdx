@@ -23,3 +23,9 @@ Published v0.1.0 has no update-check UI. It needs one manual installation of a f
 Future stable releases must use a matching package version and `vX.Y.Z` tag. Installer names follow `Inkstone-MDX-X.Y.Z-mac-arm64.dmg`, `mac-x64.dmg`, `win-x64.exe`, and `linux-x86_64.AppImage`; GitHub must expose a `sha256:` asset digest. Installer size must be 1–512 MiB. Test release metadata and downloads before announcing availability.
 
 The existing first-release workflow/scripts remain deliberately pinned to v0.1.0. They are **not** a general future-version publisher and must be reviewed/adapted separately before publishing another version. This update-check change does not broaden release-workflow permissions or publish anything automatically.
+
+## Repository and issue shortcuts
+
+Desktop **Help → GitHub repository / Report an issue…** opens the fixed project page or new-Issue form in the system browser. Browser users find the same links in **Components & help**. Labels follow the selected interface language.
+
+No Issue is submitted automatically. These links do not include document contents, file paths, logs or diagnostics in query parameters. Review anything you choose to paste into a public Issue. The desktop shortcut adds no renderer/preview IPC or arbitrary-URL opener.

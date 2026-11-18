@@ -1,6 +1,6 @@
 import { checkForUpdate, downloadUpdate } from "./updates.mjs";
-export const RELEASES_URL =
-  "https://github.com/kingshuoxu/inkstone-mdx/releases/latest";
+import { PROJECT_LINKS } from "../src/project-links.js";
+export const RELEASES_URL = PROJECT_LINKS.releases;
 
 // Native-menu only: no update IPC, renderer fetch permission or installer execution.
 export function createUpdateController({

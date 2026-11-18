@@ -26,6 +26,7 @@ import {
   PROJECT_COMPILE_TIMEOUT_MS,
 } from "./preview-limits.mjs";
 import { createUpdateController } from "./update-controller.mjs";
+import { openProjectLink } from "./external-links.mjs";
 let language = "en";
 const t = (key) => translate(language, key);
 function updateMenu() {
@@ -96,6 +97,21 @@ function updateMenu() {
         enabled: updates.phase !== "idle",
         click: () => updates.cancel(),
       },
+      { type: "separator" },
+      {
+        id: "project-repository",
+        label: t("GitHub repository"),
+        click: () => {
+          void openProjectPage("repository");
+        },
+      },
+      {
+        id: "project-issue",
+        label: t("Report an issue…"),
+        click: () => {
+          void openProjectPage("issue");
+        },
+      },
     ],
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
@@ -116,7 +132,7 @@ const updates = createUpdateController({
   message: (options) => dialog.showMessageBox(window, options),
   save: (options) => dialog.showSaveDialog(window, options),
   reveal: (file) => shell.showItemInFolder(file),
-  openReleases: (url) => shell.openExternal(url),
+  openReleases: () => openProjectLink("releases", shell.openExternal),
   stateChanged: () => {
     if (app.isReady()) updateMenu();
   },
@@ -157,6 +173,19 @@ function register(name, fn) {
       throw Error(translateError(language, error.message));
     }
   });
+}
+async function openProjectPage(key) {
+  try {
+    await openProjectLink(key, shell.openExternal);
+  } catch {
+    if (window && !window.isDestroyed())
+      await dialog.showMessageBox(window, {
+        type: "error",
+        title: t("GitHub"),
+        message: t("Could not open the browser. Please try again."),
+        buttons: [t("OK")],
+      });
+  }
 }
 async function pickDocument() {
   const r = await dialog.showOpenDialog(window, {

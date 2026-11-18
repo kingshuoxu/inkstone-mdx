@@ -59,7 +59,8 @@
       "src/compiler.js",
       "src/preview-limits.js",
       "src/compiler-legacy.js",
-      "src/core.generated.js"
+      "src/core.generated.js",
+      "src/project-links.js"
     ],
     "directories": {
       "output": "release"
