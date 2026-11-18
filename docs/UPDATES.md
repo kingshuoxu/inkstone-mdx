@@ -6,7 +6,7 @@ Choose **Help → Check for updates** (帮助 → 检查更新) in the desktop a
 
 A newer stable release offers the platform's installer. Confirm **Download installer**, choose a destination, and wait for **Installer downloaded and checksum verified**. The Help menu offers cancellation while checking or downloading. On failure/cancellation the partial file is removed and an existing destination is preserved. A successful download replaces the chosen destination only after integrity verification. No installer is executed, and the application does not close or discard your work. Save your work and install manually. Linux AppImage downloads require executable permission before launching; a Debian package can instead be obtained from the Releases page.
 
-Published v0.1.0 has no update-check UI. It needs one manual installation of a future version containing this feature. This change alone neither publishes a version nor changes existing release assets.
+Published v0.1.0 has no update-check UI. Install v0.2.0 manually once to gain this feature. Existing v0.1.0 assets remain unchanged.
 
 ## Safety and limits
 
@@ -22,7 +22,7 @@ Published v0.1.0 has no update-check UI. It needs one manual installation of a f
 
 Future stable releases must use a matching package version and `vX.Y.Z` tag. Installer names follow `Inkstone-MDX-X.Y.Z-mac-arm64.dmg`, `mac-x64.dmg`, `win-x64.exe`, and `linux-x86_64.AppImage`; GitHub must expose a `sha256:` asset digest. Installer size must be 1–512 MiB. Test release metadata and downloads before announcing availability.
 
-The existing first-release workflow/scripts remain deliberately pinned to v0.1.0. They are **not** a general future-version publisher and must be reviewed/adapted separately before publishing another version. This update-check change does not broaden release-workflow permissions or publish anything automatically.
+The release publisher derives the stable version/tag from package.json, requires matching release notes and exact asset names, and waits for Verify and Desktop on the same commit. Its permissions remain contents-write/actions-read for publication; no actions-write permission is used. An existing public release is never overwritten.
 
 ## Repository and issue shortcuts
 

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-TAG=v0.1.0
+VERSION=$(node -p "require('./package.json').version")
+[[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+TAG="v$VERSION"
+export VERSION TAG
+test -f "docs/releases/$TAG.md"
 REPO="$GITHUB_REPOSITORY"
 SHA="$GITHUB_SHA"
 test "$(node -p "require('./package.json').version")" = "${TAG#v}"
@@ -32,13 +36,19 @@ import pathlib,hashlib,json,os,shutil
 root=pathlib.Path('release-artifacts'); out=pathlib.Path('release-assets')
 files=[p for p in root.rglob('*') if p.is_file() and p.suffix in {'.AppImage','.deb','.exe','.dmg','.zip'}]
 assert len(files)==7, [(str(p),p.stat().st_size) for p in files]
-assert len({p.name for p in files})==7, 'duplicate artifact names'
+expected={
+ f'Inkstone-MDX-{os.environ["VERSION"]}-linux-x86_64.AppImage',
+ f'Inkstone-MDX-{os.environ["VERSION"]}-linux-amd64.deb',
+ f'Inkstone-MDX-{os.environ["VERSION"]}-win-x64.exe',
+ *[f'Inkstone-MDX-{os.environ["VERSION"]}-mac-{arch}.{ext}' for arch in ('arm64','x64') for ext in ('dmg','zip')],
+}
+assert {p.name for p in files}==expected, 'unexpected release asset names'
 records=[]
 for p in sorted(files,key=lambda p:p.name):
     assert p.stat().st_size>1000000, str(p)
     dest=out/p.name;shutil.copyfile(p,dest)
     records.append({'name':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
-manifest={'version':'0.1.0','tag':'v0.1.0','commit':os.environ['GITHUB_SHA'],'release_workflow_run':os.environ['GITHUB_RUN_ID'],'unsigned':True,'macos_notarized':False,'assets':records}
+manifest={'version':os.environ['VERSION'],'tag':os.environ['TAG'],'commit':os.environ['GITHUB_SHA'],'release_workflow_run':os.environ['GITHUB_RUN_ID'],'unsigned':True,'macos_notarized':False,'assets':records}
 (out/'BUILD-MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
 with (out/'SHA256SUMS.txt').open('w') as f:
     for p in sorted(out.iterdir()):
@@ -52,7 +62,7 @@ fi
 if gh release view "$TAG" --repo "$REPO" --json isDraft > /tmp/release-existing.json 2>/dev/null; then
   test "$(python3 -c "import json;print(json.load(open('/tmp/release-existing.json'))['isDraft'])")" = True
 else
-  gh release create "$TAG" --repo "$REPO" --verify-tag --draft --title "Inkstone MDX v0.1.0" --notes-file docs/releases/v0.1.0.md
+  gh release create "$TAG" --repo "$REPO" --verify-tag --draft --title "Inkstone MDX $TAG" --notes-file "docs/releases/$TAG.md"
 fi
 gh release upload "$TAG" release-assets/* --repo "$REPO" --clobber
 mkdir -p downloaded-release
