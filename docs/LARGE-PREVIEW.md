@@ -18,13 +18,17 @@ The Rust production JSX rewrite used to request line locations for every tag eve
 
 ## Validation
 
-The [140c845 browser run](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44097478902) passed all 62 active end-to-end cases (two production-only duplicates skipped). It verified full document markers, bottom-of-document interactive components and subsequent edits, whole-document references/Unicode/footnotes, obsolete compile/render cancellation, and live updates. Native tests and all three desktop platforms passed, including exact-5-MiB trusted projects. The subsequent memory-release change is still being validated.
+Code snapshot `cea179ea4247bfa4863548546746da19797a1832` passed [Verify run 44262522045](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262522045): 39 JS tests, project Rust tests, 62 active browser cases (two expected skips), 8 performance comparisons, 178 upstream Markdown tests and 36 identical parser-output hashes. [Desktop run 44262521948](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262521948) passed source and packaged-app interaction on Windows, macOS and Linux, including exact-5-MiB trusted projects.
 
-Measured on that CI runner, not a device-independent guarantee:
+The parser now uses an indexed edit map to avoid repeatedly scanning all preceding edits. The regression checks compare the patched parser with pinned upstream, including source positions and complete output hashes. No grammar or renderer semantics are intentionally changed.
 
-| Fixture                      | UTF-8 bytes |   Lines | React-ready after compile start | Observed run-to-ready | DOM elements |
-| ---------------------------- | ----------: | ------: | ------------------------------: | --------------------: | -----------: |
-| Long paragraphs              |   5,231,639 |   2,762 |                         1.106 s |               2.787 s |        1,391 |
-| Rich headings/emphasis/links |   5,234,634 | 303,462 |                        51.253 s |              53.135 s |      455,193 |
+Measured once per fixture on that GitHub Actions Linux runner in Chromium with a production build, not a repeated-run median or device-independent guarantee:
 
-Both tests scrolled to the unique final heading, clicked the final Counter and verified a new final heading after editing. The rich case is complete but remains expensive; a source-byte limit alone cannot predict rendering cost. These timings include compilation and React readiness, not just compiler execution. The earlier README editing-only benchmarks are not full-preview timings. The run's later legacy performance comparison failed because its selector did not distinguish the retained preview from a pending replacement; that selector is being corrected separately.
+| Fixture                      | UTF-8 bytes |   Lines | React-ready after compile start | Observed after enabling preview | DOM elements |
+| ---------------------------- | ----------: | ------: | ------------------------------: | ------------------------------: | -----------: |
+| Long paragraphs              |   5,231,639 |   2,762 |                         1.504 s |                         3.384 s |        1,391 |
+| Rich headings/emphasis/links |   5,234,634 | 303,462 |                        13.741 s |                        15.768 s |      455,193 |
+
+Both cases scroll to the unique final heading, click the final Counter and verify a new final heading after editing. Tests also cover references, Unicode, footnotes and obsolete compile/render cancellation. These timings include compilation and React readiness, not just parsing. The rich case remains expensive: source byte count alone cannot predict rendering cost.
+
+Screenshots and their checksums are documented in [screenshot provenance](screenshots/README.md). The browser artifact contains `full-preview-*.json` for the timing observations and `parser-regression/` for upstream and differential results.

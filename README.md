@@ -29,33 +29,26 @@
 
 ![简体中文界面与中文文档预览](docs/screenshots/chinese-production.png)
 
-### 大文件编辑测试（不是预览效果图）
+### 完整大文件预览
 
-> **编辑性能与预览能力是两回事。** 下面是旧版本的约 5 MiB 编辑压力测试，截图时预览暂停，因此右侧为空。当前版本已支持 **5 MiB 完整文档预览**，不截断正文；大文件需要较长的编译和渲染时间，详见[完整预览说明](docs/LARGE-PREVIEW.md)。正常预览效果请看上方两张截图。
+约 5 MiB、303,462 行的真实测试文档，源码高亮与完整预览同时保留。下面滚动到了文档末尾，末尾的 Counter 已成功点击。
 
-<details>
-<summary>展开大文件高亮压力测试截图（预览已暂停）</summary>
+![约 5 MiB 文档末尾的源码高亮、完整预览与可交互组件](docs/screenshots/full-preview-rich-300k-lines.png)
 
-![仅展示约 5 MiB 文档的后台语法高亮；预览暂停，右侧为空](docs/screenshots/highlight-production.png)
+以上均为 `cea179e` 生产构建在 Chromium 中的实际截图，不是设计稿。测试文档为合成数据；截图来源与校验值见[截图说明](docs/screenshots/README.md)。
 
-顶部存储提示说明该测试文档超出了浏览器草稿容量；这不代表磁盘文件保存失败。请主动保存文件。
+## 实测性能
 
-</details>
+以下为 `cea179e` 在 GitHub Actions Linux runner、Chromium、生产构建下的完整预览测试，**包含编译与 React 就绪，不是仅解析耗时**。每个样本为一次测试观察值，不是多次运行中位数。
 
-以上是 `4d269a4` 生产构建在 Chromium 中的真实运行截图，不是设计稿。截图来源与校验值见 [截图说明](docs/screenshots/README.md)。
+| 测试文档               | UTF-8 字节数 |    行数 | 编译开始至 React 就绪 | 启用预览后至自动化观察到就绪 | DOM 元素数 |
+| ---------------------- | -----------: | ------: | --------------------: | ---------------------------: | ---------: |
+| 普通长段落             |    5,231,639 |   2,762 |               1.504 s |                      3.384 s |      1,391 |
+| 富格式标题、强调与链接 |    5,234,634 | 303,462 |              13.741 s |                     15.768 s |    455,193 |
 
-## 性能：保留高亮，而不是牺牲高亮
+[对应 Verify CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262522045)。两组均验证了末尾唯一标题、末尾 Counter 交互，以及编辑后的新标题。Rust 解析器的编辑映射索引减少了长文档中的重复线性扫描；后台高亮避免编辑输入等待整篇高亮计算。
 
-同一 GitHub Actions Linux runner、Chromium、生产构建，约 **5 MiB** 文档，**暂停预览**，每组 20 次自动化输入。测量 `beforeinput` 到下一动画帧；旧版使用主线程高亮，新版使用后台 Worker 高亮。
-
-| 测试文档   | 旧版中位数 / p95 |  新版中位数 / p95 |
-| ---------- | ---------------: | ----------------: |
-| 普通长段落 | 292.5 / 303.9 ms | **8.4 / 16.2 ms** |
-| 富格式文档 |   47.5 / 64.2 ms | **8.3 / 15.9 ms** |
-
-数据来自提交 `4d269a4` 的 [同机对比 CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44084892798)，基线为 `19f4d5b`。这是编辑响应测试，**不是物理键盘延迟、完整实时预览性能或所有设备的帧率保证**。
-
-Rust 编译器的收益是另一项独立测量：在已记录的 Linux / Node 24 编译基准中，约 100 KB 复杂 MDX 的暖编译中位数从 651.8 ms 降到 198.3 ms；约 500 KB 时为 3342.1 → 2994.8 ms。它并非所有情况下都更快，也不会消除 React 渲染或执行文档代码的成本。完整条件、冷启动与内存数据见 [Rust 性能报告](docs/RUST-PERFORMANCE.md)。
+文档结构会显著影响成本：相近字节数不代表相近预览耗时。大 React 树仍需时间和内存，以上不是所有设备的延迟或帧率保证。实现边界见[完整预览说明](docs/LARGE-PREVIEW.md)，早期编译器基准见[历史 Rust 性能报告](docs/RUST-PERFORMANCE.md)。
 
 ### 当前边界
 
@@ -69,7 +62,7 @@ Rust 编译器的收益是另一项独立测量：在已记录的 Linux / Node 2
 
 ### 下载桌面测试包
 
-在 [Desktop 工作流](https://github.com/kingshuoxu/inkstone-mdx/actions/workflows/desktop.yml) 中选择成功运行，在 **Artifacts** 下载对应平台产物。作为已验证快照，也可以查看 [4d269a4 的三平台构建](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44084892678)。下载通常需要登录 GitHub，产物会过期；当前没有正式 Release 或自动更新器。
+在 [cea179e 的三平台构建](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262521948) 的 **Artifacts** 下载对应平台测试包。该构建与本页描述的 PR #4 代码一致，并非 main 正式发布。下载通常需要登录 GitHub，产物会过期；当前没有正式 Release 或自动更新器。
 
 - macOS：DMG / ZIP
 - Windows：NSIS 安装程序
@@ -79,10 +72,10 @@ Rust 编译器的收益是另一项独立测量：在已记录的 Linux / Node 2
 
 ### 从源码启动
 
-需要 Node.js **22.12+**（CI 使用 Node 24）、npm、稳定版 Rust 工具链及系统构建工具。从默认主分支获取源码：
+需要 Node.js **22.12+**（CI 使用 Node 24）、npm、稳定版 Rust 工具链及系统构建工具。获取本页对应的开发分支（尚未合并到 main）：
 
 ```sh
-git clone https://github.com/kingshuoxu/inkstone-mdx.git
+git clone --branch feat/large-file-preview https://github.com/kingshuoxu/inkstone-mdx.git
 cd inkstone-mdx
 rustup target add wasm32-unknown-unknown
 cargo install wasm-bindgen-cli --version 0.2.105 --locked
@@ -108,12 +101,11 @@ npm run desktop:dist  # 为当前操作系统生成 release/ 下的安装包
 
 ## 测试与开发
 
-提交 `4d269a4` 的验证快照：
+提交 `cea179e` 的验证快照（文档后续更新不改变该测试对象）：
 
-- [Verify CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44084892798)：38 项 JS、2 项 Rust、46 项浏览器测试和 8 项新旧版本对比通过。
-- [Desktop CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44084892678)：Windows、macOS、Linux 源码交互、打包及打包后交互通过。
-- 覆盖中文内容、跨行语法、快速修改、滚动、撤销、Worker 故障恢复、接近 5 MiB 文件的编辑与保存。Linux 有真实 IBus 输入法覆盖；Windows/macOS 真实输入法、长期压力和完整安装向导尚未覆盖。
-- 中间一次 Windows 自动化保存校验得到未修改的原文，后续多次通过，但该次失败根因尚未证实；不宣称所有偶发问题均已解决。
+- [Verify CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262522045)：39 项 JS 测试、项目 Rust 测试、62 项浏览器测试（另有 2 项预期跳过）及 8 项性能对比通过；上游 Markdown 的 178 项测试通过，36 组解析结果哈希与原版一致。
+- [Desktop CI](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262521948)：Windows、macOS、Linux 源码交互、打包及打包后交互通过。
+- 覆盖完整大文件末尾、组件交互、后续编辑、Unicode、引用与脚注、过期结果取消、高亮及接近 5 MiB 文件保存。Linux 有真实 IBus 输入法覆盖；Windows/macOS 真实输入法、长期压力和完整安装向导尚未覆盖。
 
 ```sh
 npm ci --prefix examples/project --ignore-scripts
