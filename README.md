@@ -6,7 +6,7 @@
 
 [English](README.en.md) · [MIT License](LICENSE) · [桌面版指南](docs/DESKTOP.md) · [测试与限制](docs/EXTENDED-VALIDATION.md)
 
-> **开发预览版**：完整大文件预览已通过 [PR #4](https://github.com/kingshuoxu/inkstone-mdx/pull/4) 合并到 main，尚未正式发布。桌面测试包未签名，macOS 未公证。请只运行可信的 MDX 文档与项目。
+> **v0.1.0 已发布**：[下载正式版本](https://github.com/kingshuoxu/inkstone-mdx/releases/tag/v0.1.0)，包含完整大文件预览。桌面安装包未签名，macOS 未公证。请只运行可信的 MDX 文档与项目。
 
 ## 页面预览
 
@@ -60,13 +60,13 @@
 
 ## 开始使用
 
-### 下载桌面测试包
+### 下载桌面版
 
-在 [cea179e 的三平台构建](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262521948) 的 **Artifacts** 下载对应平台测试包。该构建验证了现已合入 main 的 PR #4 代码，但不是正式 Release。下载通常需要登录 GitHub，产物会过期；当前没有正式 Release 或自动更新器。
+在 [v0.1.0 Release](https://github.com/kingshuoxu/inkstone-mdx/releases/tag/v0.1.0) 的 **Assets** 下载对应平台安装包；同页提供 `SHA256SUMS.txt` 和 `BUILD-MANIFEST.json` 供校验。当前没有自动更新器。
 
-- macOS：DMG / ZIP
-- Windows：NSIS 安装程序
-- Linux：AppImage / DEB
+- macOS：Apple Silicon（arm64）/ Intel（x64），DMG / ZIP
+- Windows：x64，NSIS 安装程序（EXE）
+- Linux：x86_64 / amd64，AppImage / DEB
 
 安装后的应用不需要 Rust 或 Node 开发环境。安装包未签名 / 未公证，不能将打包成功等同于完整安装向导已验证。
 

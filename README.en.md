@@ -6,7 +6,7 @@ A local-first, source-first MDX editor. Write Markdown and React components in a
 
 [简体中文](README.md) · [MIT License](LICENSE) · [Desktop guide](docs/DESKTOP.md) · [Validation](docs/EXTENDED-VALIDATION.md)
 
-> **Development preview:** full large-file preview has been merged into main via [PR #4](https://github.com/kingshuoxu/inkstone-mdx/pull/4), but has not been formally released. Desktop packages are unsigned and macOS builds are not notarized. Only run trusted documents and projects.
+> **v0.1.0 is released:** [download the release](https://github.com/kingshuoxu/inkstone-mdx/releases/tag/v0.1.0), including complete large-file preview. Desktop packages are unsigned and macOS builds are not notarized. Only run trusted documents and projects.
 
 ## Live preview
 
@@ -60,9 +60,13 @@ Document structure matters: similar source sizes do not imply similar preview ti
 
 ## Get started
 
-### Desktop test packages
+### Desktop downloads
 
-Download platform artifacts from [the verified cea179e snapshot](https://github.com/kingshuoxu/inkstone-mdx/actions/runs/44262521948) for macOS DMG/ZIP, Windows NSIS and Linux AppImage/DEB packages. This build validates the PR #4 code now merged into main, but is not a formal release. Artifacts usually require GitHub login and expire. There is no formal release or auto-updater yet.
+Download platform packages from **Assets** on the [v0.1.0 Release](https://github.com/kingshuoxu/inkstone-mdx/releases/tag/v0.1.0) page. The same page provides `SHA256SUMS.txt` and `BUILD-MANIFEST.json` for verification. There is no auto-updater yet.
+
+- macOS: Apple Silicon (arm64) / Intel (x64), DMG / ZIP
+- Windows: x64, NSIS installer (EXE)
+- Linux: x86_64 / amd64, AppImage / DEB
 
 Installed apps do not require Node or Rust. Packages are unsigned/not notarized; successful packaging does not verify every installer-wizard interaction.
 
