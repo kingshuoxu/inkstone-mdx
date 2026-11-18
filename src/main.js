@@ -192,11 +192,13 @@ function schedule() {
   );
 }
 async function showPreview(previewRuntime, code, id, ms) {
+  window.profile.showStart=performance.now();
   const token = crypto.randomUUID();
   const html = previewDocument(previewRuntime, code, language, {
     token,
     large: previewBytes(source) > LARGE_PREVIEW_BYTES,
   });
+  window.profile.htmlBuilt=performance.now();
   const url = desktop ? await desktop.preview(html) : null;
   if (id !== revision || paused) return;
   discardPendingPreview();
@@ -214,6 +216,7 @@ async function showPreview(previewRuntime, code, id, ms) {
   if (url) frame.src = url;
   else frame.srcdoc = html;
   $("#preview").append(frame);
+  window.profile.frameAppended=performance.now();
   renderTimer = setTimeout(() => {
     if (pendingFrame?.id !== id) return;
     discardPendingPreview();
@@ -239,11 +242,14 @@ window.addEventListener("message", (event) => {
     return;
   }
   if (event.data.state !== "ready") return;
+  Object.assign(window.profile,{readyReceived:performance.now(),frameProfile:event.data.profile});
   clearTimeout(renderTimer);
   pendingFrame = null;
   pending.frame.style.cssText = "";
   delete pending.frame.dataset.pending;
   $("#preview").replaceChildren(pending.frame);
+  window.profile.swapped=performance.now();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{window.profile.twoFrames=performance.now()}));
   $("#preview-error").hidden = true;
   $("#compile-status").dataset.state = "ready";
   $("#compile-status").dataset.previewMs = String(
@@ -266,6 +272,7 @@ async function run() {
       "Compiling the complete document in the background. You can keep editing; no content is truncated.",
     );
   previewStarted = performance.now();
+  window.profile={started:previewStarted, origin:performance.timeOrigin};
   $("#compile-status").dataset.state = "compiling";
   $("#preview-error").hidden = true;
   ui("#compile-status", "Compiling…");
@@ -317,6 +324,7 @@ async function run() {
       showError(data.error);
       return;
     }
+    Object.assign(window.profile,{compileMs:data.ms,workerStart:data.workerStart,workerEnd:data.workerEnd,rustStages:data.rustStages,workerReceived:performance.now(),codeChars:data.code.length});
     showPreview(runtime, data.code, id, data.ms).catch((error) => {
       if (id === revision) showError(error.message);
     });

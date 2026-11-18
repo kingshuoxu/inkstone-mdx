@@ -33,14 +33,16 @@ export function reportPreview(state, message = "") {
     document.getElementById("preview-token")?.textContent || '""',
   );
   window.parent.postMessage(
-    { type: "inkstone-preview", token, state, message },
+    { type: "inkstone-preview", token, state, message,profile:window.frameProfile },
     "*",
   );
 }
 export function Ready({ children }) {
+  React.useLayoutEffect(()=>{window.frameProfile.layoutEffect=performance.now();},[]);
   React.useEffect(() => {
     // The React tree has committed. This is not a guarantee that every offscreen
     // block has been painted, nor a promise that document code cannot hang.
+    window.frameProfile.effect=performance.now();
     reportPreview("ready");
   }, []);
   return children;

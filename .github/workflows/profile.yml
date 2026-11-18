@@ -1,0 +1,30 @@
+name: Diagnose preview stages
+on: [push]
+permissions:
+  contents: read
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+      - run: cargo install wasm-bindgen-cli --version 0.2.105 --locked
+      - run: npm ci
+      - run: npm run build:core && npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --config playwright.profile.config.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: preview-profile
+          path: diagnostics/*.json

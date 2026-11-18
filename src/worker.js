@@ -1,6 +1,7 @@
 import { compileWithEngine } from "./compiler.js";
 self.onmessage = async ({ data }) => {
   const start = performance.now();
+  globalThis.rustStages=[]; globalThis.stage=(name)=>globalThis.rustStages.push({name,at:performance.now()});
   try {
     const result = await compileWithEngine(data.source, {
       engine: import.meta.env?.VITE_COMPILER_ENGINE || "auto",
@@ -10,6 +11,7 @@ self.onmessage = async ({ data }) => {
         "Compiled preview exceeds 64 MiB. No partial preview was shown.",
       );
     postMessage({
+      rustStages: globalThis.rustStages, workerStart:start, workerEnd:performance.now(),
       id: data.id,
       ...result,
       ms: performance.now() - start,

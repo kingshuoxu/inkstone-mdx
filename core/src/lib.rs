@@ -6,6 +6,9 @@ use swc_core::ecma::{
     visit::{Visit, VisitWith},
 };
 use wasm_bindgen::prelude::*;
+#[wasm_bindgen]
+extern "C" { fn stage(name: &str); }
+
 
 // Function-body mode must preserve the reference compiler's base-URL semantics.
 #[derive(Default)]
@@ -51,8 +54,10 @@ fn compile_inner_with_reference_locations(
     if source.len() > 5 * 1024 * 1024 {
         return Err("Preview source exceeds 5 MiB".into());
     }
+    stage("rust_start");
     let options = mdxjs::Options::gfm();
     let tree = mdxjs::mdast_util_from_mdx(source, &options).map_err(|e| e.to_string())?;
+    stage("mdast_parsed");
     if !program
         && tree
             .children()
@@ -63,13 +68,17 @@ fn compile_inner_with_reference_locations(
         );
     }
     let location = Location::new(source.as_bytes());
+    stage("location_indexed");
     let mut explicit = FxHashSet::default();
     let mut html = mdxjs::mdast_util_to_hast(&tree);
     normalize_tables(&mut html);
+    stage("hast_built");
     let mut output = mdxjs::hast_util_to_swc(&html, &options, Some(&location), &mut explicit)
         .map_err(|e| e.to_string())?;
+    stage("swc_built");
     mdxjs::mdx_plugin_recma_document(&mut output, &options, Some(&location))
         .map_err(|e| e.to_string())?;
+    stage("recma_document_done");
     // In production mode, JSX rewrite does not emit reference locations.
     // Upstream nevertheless resolves every tag's line with a linear scan.
     // Avoid O(tags * lines) work while retaining locations in parsing and
@@ -81,6 +90,7 @@ fn compile_inner_with_reference_locations(
         &explicit,
     )
         .map_err(|e| e.to_string())?;
+    stage("jsx_rewrite_done");
     if program {
         return Ok(to_code(&output.module));
     }
@@ -89,6 +99,7 @@ fn compile_inner_with_reference_locations(
     if module_expressions.0 {
         return Err("Module expressions require the JavaScript compatibility compiler".into());
     }
+    stage("module_checked");
     let mut result = String::from("\"use strict\";\n");
     for item in output.module.body {
         match item {
@@ -121,6 +132,7 @@ fn compile_inner_with_reference_locations(
             _ => return Err("Unsupported module declaration".into()),
         }
     }
+    stage("code_generated");
     Ok(result)
 }
 
