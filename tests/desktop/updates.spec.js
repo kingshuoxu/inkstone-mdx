@@ -2,10 +2,18 @@ import { test, expect, _electron as electron } from "@playwright/test";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
+import http from "node:http";
 import { createHash } from "node:crypto";
 
 test("native update menu checks, cancels, verifies a download without executing it", async () => {
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), "ink-updates-"));
+  let requests = 0;
+  const server = http.createServer((_req, res) => {
+    requests++;
+    res.end("main-fetch-ok");
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const probe = `http://127.0.0.1:${server.address().port}/probe`;
   const destination = path.join(profile, "downloaded-installer.bin");
   const args = process.env.INKSTONE_EXECUTABLE ? [] : [path.resolve(".")];
   args.push("--user-data-dir=" + profile);
@@ -17,6 +25,23 @@ test("native update menu checks, cancels, verifies a download without executing 
   try {
     const page = await app.firstWindow();
     await page.locator("#language").selectOption("en");
+    expect(
+      await app.evaluate(
+        async (_electron, url) => (await fetch(url)).text(),
+        probe,
+      ),
+    ).toBe("main-fetch-ok");
+    expect(
+      await page.evaluate(async (url) => {
+        try {
+          await fetch(url);
+          return "allowed";
+        } catch {
+          return "blocked";
+        }
+      }, probe),
+    ).toBe("blocked");
+    expect(requests).toBe(1);
     const bytes = Buffer.alloc(1024 * 1024 + 8, 65);
     const digest = createHash("sha256").update(bytes).digest("hex");
     await app.evaluate(
@@ -104,6 +129,22 @@ test("native update menu checks, cancels, verifies a download without executing 
           ),
         )
         .toBe(true);
+    await page.locator(".cm-content").click();
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.keyboard.insertText("\n\nupdate-quit-cancel-regression");
+    await app.evaluate(({ app, dialog }) => {
+      dialog.showMessageBoxSync = () => {
+        globalThis.quitPromptSeen = true;
+        return 0;
+      };
+      app.quit();
+    });
+    await expect
+      .poll(() => app.evaluate(() => globalThis.quitPromptSeen))
+      .toBe(true);
+    await expect(page.locator(".cm-content")).toContainText(
+      "update-quit-cancel-regression",
+    );
     await click();
     await idle();
     expect(
@@ -142,5 +183,6 @@ test("native update menu checks, cancels, verifies a download without executing 
     );
     await app.close();
     await fs.rm(profile, { recursive: true, force: true });
+    await new Promise((resolve) => server.close(resolve));
   }
 });

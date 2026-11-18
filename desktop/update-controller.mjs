@@ -104,7 +104,8 @@ export function createUpdateController({
           defaultId: 0,
           cancelId: 0,
         });
-        if (done.response === 1 && !disposed) reveal(completed.path);
+        if (done.response === 1 && !signal.aborted && !disposed)
+          reveal(completed.path);
       } catch {
         if (!signal.aborted && !disposed) {
           const answer = await show({
@@ -116,7 +117,7 @@ export function createUpdateController({
             defaultId: 0,
             cancelId: 0,
           });
-          if (answer.response === 1 && !disposed)
+          if (answer.response === 1 && !signal.aborted && !disposed)
             await openReleases(RELEASES_URL);
         }
       } finally {

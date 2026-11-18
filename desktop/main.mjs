@@ -412,7 +412,8 @@ async function boot() {
 }
 app.on("window-all-closed", () => app.quit());
 app.on("before-quit", () => {
-  updates.dispose();
+  updates.cancel();
   cancelCompile();
 });
+app.on("will-quit", () => updates.dispose());
 boot();
