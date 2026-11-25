@@ -137,7 +137,7 @@ test("failed native save retains dirty source", async ({ page }) => {
   });
   await page.goto("/");
   await replace(page, "# Keep me");
-  await page.getByRole("button", { name: /^Save ⌘/ }).click();
+  await page.locator("#save").click();
   await expect(page.locator("#notice")).toContainText("disk full");
   await expect(page.locator(".cm-content")).toContainText("Keep me");
   expect(await page.title()).toMatch(/^•/);
@@ -246,14 +246,16 @@ test("Chinese UI switches live, preserves source and undo, and persists after re
     page.getByRole("textbox", { name: "MDX 源码编辑器" }),
   ).toContainText("中文文档");
   await expect(
-    page.getByRole("heading", { name: "让文字，拥有更多可能。" }),
+    page
+      .getByRole("group", { name: "工作区视图" })
+      .getByRole("button", { name: "分栏", exact: true }),
   ).toBeVisible();
   await expect(
     page
       .frameLocator("iframe:not([data-pending])")
       .getByRole("button", { name: "已点击 0 次" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "组件与帮助 ↗" }).click();
+  await page.getByRole("button", { name: "组件与帮助", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "让 Markdown 遇见组件。" }),
   ).toBeVisible();
