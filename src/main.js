@@ -76,7 +76,7 @@ function discardPendingPreview() {
   pendingFrame = null;
 }
 $("#app").innerHTML =
-  `<aside class="sidebar"><a class="brand" href="#" aria-label="Inkstone home"><span class="brand-mark">i.</span>inkstone<span class="beta">MDX</span></a><div class="section-label">WORKSPACE</div><div class="file-item"><span>◈</span><span id="side-name"></span><i id="dirty-dot"></i></div><button id="open-side" class="sidebar-button">＋ Open a document</button><div class="sidebar-bottom"><div class="leaf">❧</div><strong>A place for your next idea.</strong><p>Plain text. Live components.<br>A little room to think.</p><button id="help">Components & help ↗</button><div class="local"><span></span> Local workspace</div></div></aside><main class="workspace"><header><div class="breadcrumb">Workspace <span>/</span> <strong id="file-name"></strong></div><div class="actions"><button id="open">Open <kbd>⌘ O</kbd></button><button id="copy">Save a copy</button><button id="save" class="primary">Save <kbd>⌘ S</kbd></button></div></header><section class="workspace-title"><div><div class="eyebrow">MAKE ROOM FOR YOUR IDEAS</div><h1>Your words, with possibility.</h1></div><div class="view-toggle" role="group" aria-label="Workspace view"><button data-view="source">Source</button><button data-view="split" aria-pressed="true">Split</button><button data-view="preview">Preview</button></div></section><div id="notice" role="status" hidden></div><div class="panes" data-mode="split"><section class="source-pane"><div class="pane-head"><span><b>◧</b> SOURCE</span><span>MDX <i>·</i> UTF-8</span></div><div id="editor"></div></section><section class="preview-pane"><div class="pane-head"><span><b>◉</b> LIVE PREVIEW</span><span id="compile-status">Preparing…</span><button id="pause">Pause</button></div><div id="preview-error" role="alert" hidden></div><div id="preview"></div></section></div><footer><span id="stats"></span><span id="syntax-status" hidden></span><span id="draft-status"></span><span>Sandboxed preview <b>◇</b></span></footer></main><input type="file" id="file-input" accept=".mdx,.md,.markdown,text/plain" hidden><dialog><button id="close-help" aria-label="Close help">×</button><div class="eyebrow">A LITTLE MORE POSSIBILITY</div><h2>Markdown meets components.</h2><p>Use Markdown, GFM tables, JSX, and JavaScript expressions. Built-in components require no imports:</p><pre>&lt;Callout title="Note" tone="warning"&gt;Text&lt;/Callout&gt;\n&lt;Badge&gt;New&lt;/Badge&gt;\n&lt;Card title="Idea"&gt;Content&lt;/Card&gt;\n&lt;Counter /&gt;</pre><p>Browser mode rejects imports and exports. Desktop mode supports local components and installed browser-compatible dependencies after workspace trust. Preview resets component state after each compile. Remote assets are blocked; data images work.</p><p>The preview has an opaque origin with no file handles or app bridge. Executable MDX can still hang its browser tab or navigate its own frame: only run code you trust. Pause stops previews while you edit.</p><p>Save overwrites only a file you selected, with a conflict check. Unsupported browsers download a copy. Recovery drafts are stored in this browser; they are not a backup. Avoid simultaneous editing in multiple tabs.</p></dialog>`;
+  `<aside class="sidebar"><div class="brand"><span class="brand-mark">i.</span>inkstone<span class="beta">MDX</span></div><div class="section-label">WORKSPACE</div><div class="file-item"><span>◈</span><span id="side-name"></span><i id="dirty-dot"></i></div><button id="open-side" class="sidebar-button">＋ Open a document</button><div class="sidebar-bottom"><div class="local"><span></span> Local workspace</div></div></aside><main class="workspace"><header><div class="breadcrumb">Workspace <span>/</span> <strong id="file-name"></strong></div><div class="actions"><button id="open">Open <kbd>⌘ O</kbd></button><button id="copy">Save a copy</button><button id="save" class="primary">Save <kbd>⌘ S</kbd></button></div></header><section class="workspace-title"><div class="view-toggle" role="group" aria-label="Workspace view"><button data-view="source">Source</button><button data-view="split" aria-pressed="true">Split</button><button data-view="preview">Preview</button></div><button id="help" aria-haspopup="dialog">Components & help</button></section><div id="notice" role="status" hidden></div><div class="panes" data-mode="split"><section id="source-pane" class="source-pane"><div class="pane-head"><span><b>◧</b> SOURCE</span><span>MDX <i>·</i> UTF-8</span></div><div id="editor"></div></section><div id="splitter" role="separator" tabindex="0" aria-label="Resize source and preview" aria-orientation="vertical" aria-controls="source-pane" aria-valuemin="25" aria-valuemax="75" aria-valuenow="50"></div><section class="preview-pane"><div class="pane-head"><span><b>◉</b> PREVIEW</span><div class="preview-status"><span id="compile-status">Preparing…</span><span class="live-label">Live</span></div><button id="pause">Pause</button></div><div id="preview-error" role="alert" hidden></div><div id="preview"></div></section></div><footer><span id="stats"></span><span id="syntax-status" hidden></span><span id="draft-status"></span><span>Sandboxed preview <b>◇</b></span></footer></main><input type="file" id="file-input" accept=".mdx,.md,.markdown,text/plain" hidden><dialog aria-labelledby="help-title"><button id="close-help" aria-label="Close help">×</button><div class="eyebrow">A LITTLE MORE POSSIBILITY</div><h2 id="help-title">Markdown meets components.</h2><p>Use Markdown, GFM tables, JSX, and JavaScript expressions. Built-in components require no imports:</p><pre>&lt;Callout title="Note" tone="warning"&gt;Text&lt;/Callout&gt;\n&lt;Badge&gt;New&lt;/Badge&gt;\n&lt;Card title="Idea"&gt;Content&lt;/Card&gt;\n&lt;Counter /&gt;</pre><p>Browser mode rejects imports and exports. Desktop mode supports local components and installed browser-compatible dependencies after workspace trust. Preview resets component state after each compile. Remote assets are blocked; data images work.</p><p>The preview has an opaque origin with no file handles or app bridge. Executable MDX can still hang its browser tab or navigate its own frame: only run code you trust. Pause stops previews while you edit.</p><p>Save overwrites only a file you selected, with a conflict check. Unsupported browsers download a copy. Recovery drafts are stored in this browser; they are not a backup. Avoid simultaneous editing in multiple tabs.</p></dialog>`;
 if (!desktop) {
   const links = document.createElement("p");
   links.id = "project-links";
@@ -100,7 +100,13 @@ const languageLabel = document.createElement("label");
 languageLabel.className = "language-control";
 languageLabel.innerHTML =
   '<span>Interface language</span><select id="language" aria-label="Interface language"><option value="zh-CN">简体中文</option><option value="en">English</option></select>';
-$(".actions").prepend(languageLabel);
+$(".actions").append(languageLabel);
+const shortcuts = /Mac|iPhone|iPad/.test(navigator.platform);
+for (const [id, key] of [
+  ["open", "O"],
+  ["save", "S"],
+])
+  $(`#${id} kbd`).textContent = shortcuts ? `⌘ ${key}` : `Ctrl+${key}`;
 translations.register();
 function notice(text, values) {
   $("#notice").hidden = !text;
@@ -148,10 +154,12 @@ function pauseUntrustedPreview() {
   paused = true;
   requiresTrust = true;
   schedule();
+  $(".preview-pane").classList.remove("has-preview");
   $("#preview").replaceChildren();
   const placeholder = document.createElement("p");
   placeholder.className = "preview-placeholder";
-  placeholder.textContent = t(
+  translations.text(
+    placeholder,
     "Preview is paused for safety. Review the source, then choose Run preview to render the complete document.",
   );
   $("#preview").append(placeholder);
@@ -264,6 +272,7 @@ window.addEventListener("message", (event) => {
   pending.frame.style.cssText = "";
   delete pending.frame.dataset.pending;
   $("#preview").replaceChildren(pending.frame);
+  $(".preview-pane").classList.add("has-preview");
   $("#preview-error").hidden = true;
   $("#compile-status").dataset.state = "ready";
   $("#compile-status").dataset.previewMs = String(
@@ -281,10 +290,7 @@ async function run() {
   compileBusy = true;
   activeCompileId = id;
   const placeholder = $("#preview .preview-placeholder");
-  if (placeholder)
-    placeholder.textContent = t(
-      "Compiling the complete document in the background. You can keep editing; no content is truncated.",
-    );
+  if (placeholder) translations.text(placeholder, "Preparing preview…");
   previewStarted = performance.now();
   $("#compile-status").dataset.state = "compiling";
   $("#preview-error").hidden = true;
@@ -589,18 +595,105 @@ $("#pause").onclick = () => {
     );
   schedule();
   if (paused) {
+    $(".preview-pane").classList.remove("has-preview");
     $("#preview").replaceChildren();
     ui("#compile-status", "Paused");
     desktop?.clearPreview();
   }
 };
-for (const b of document.querySelectorAll("[data-view]"))
-  b.onclick = () => {
-    $(".panes").dataset.mode = b.dataset.view;
-    for (const other of document.querySelectorAll("[data-view]"))
-      other.setAttribute("aria-pressed", String(other === b));
-    editor.requestMeasure();
+const panes = $(".panes");
+const viewButtons = [...document.querySelectorAll("[data-view]")];
+const compactWorkspace = matchMedia("(max-width: 720px)");
+let explicitView = false;
+function setView(view) {
+  panes.dataset.mode = view;
+  for (const button of viewButtons)
+    button.setAttribute("aria-pressed", String(button.dataset.view === view));
+  editor.requestMeasure();
+}
+function setAutomaticView() {
+  if (!explicitView) setView(compactWorkspace.matches ? "source" : "split");
+}
+for (const button of viewButtons) {
+  button.onclick = () => {
+    explicitView = true;
+    setView(button.dataset.view);
   };
+}
+compactWorkspace.addEventListener("change", setAutomaticView);
+setAutomaticView();
+
+const splitter = $("#splitter");
+let share = 50;
+let drag = null;
+function setShare(nextShare) {
+  share = Math.round(Math.max(25, Math.min(75, nextShare)));
+  panes.style.setProperty("--source-share", `${share}fr`);
+  panes.style.setProperty("--preview-share", `${100 - share}fr`);
+  splitter.setAttribute("aria-valuenow", String(share));
+}
+splitter.addEventListener("pointerdown", (event) => {
+  if (!event.isPrimary || event.button !== 0 || drag) return;
+  const bounds = splitter.getBoundingClientRect();
+  drag = {
+    id: event.pointerId,
+    offset: event.clientX - bounds.left,
+    originalShare: share,
+  };
+  splitter.focus({ preventScroll: true });
+  splitter.setPointerCapture(event.pointerId);
+  panes.dataset.resizing = "";
+});
+splitter.addEventListener("pointermove", (event) => {
+  if (drag?.id !== event.pointerId) return;
+  const bounds = panes.getBoundingClientRect();
+  // Reserve the handle and use the same inner width as the grid.
+  const available = panes.clientWidth - splitter.offsetWidth;
+  if (available > 0)
+    setShare(
+      ((event.clientX - bounds.left - panes.clientLeft - drag.offset) /
+        available) *
+        100,
+    );
+});
+function finishDrag(restore = false) {
+  if (!drag) return;
+  const { id, originalShare } = drag;
+  drag = null;
+  delete panes.dataset.resizing;
+  if (splitter.hasPointerCapture(id)) splitter.releasePointerCapture(id);
+  if (restore) setShare(originalShare);
+  editor.requestMeasure();
+}
+splitter.addEventListener("pointerup", (event) => {
+  if (drag?.id === event.pointerId) finishDrag();
+});
+splitter.addEventListener("pointercancel", (event) => {
+  if (drag?.id === event.pointerId) finishDrag(true);
+});
+splitter.addEventListener("lostpointercapture", (event) => {
+  if (drag?.id === event.pointerId) finishDrag();
+});
+splitter.addEventListener("dblclick", () => setShare(50));
+splitter.addEventListener("keydown", (event) => {
+  const step = event.shiftKey ? 10 : 2;
+  const values = {
+    ArrowLeft: share - step,
+    ArrowRight: share + step,
+    Home: 25,
+    End: 75,
+    Enter: 50,
+  };
+  if (event.key === "Escape" && drag) {
+    event.preventDefault();
+    finishDrag(true);
+    return;
+  }
+  if (!Object.hasOwn(values, event.key)) return;
+  event.preventDefault();
+  setShare(values[event.key]);
+  editor.requestMeasure();
+});
 window.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
     e.preventDefault();

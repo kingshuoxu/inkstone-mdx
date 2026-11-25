@@ -75,7 +75,12 @@ test("native project preview, npm state, isolation, saves, errors and revoke", a
       "data-engine",
       "rust",
     );
-    await page.getByRole("link", { name: "Inkstone home" }).click();
+    const splitter = page.getByRole("separator", {
+      name: "Resize source and preview",
+    });
+    await splitter.focus();
+    await splitter.press("ArrowRight");
+    await expect(splitter).toHaveAttribute("aria-valuenow", "52");
     await page.locator("#project-open").click();
     await expect(page.locator("#project-status")).toContainText(
       "No trusted workspace",
