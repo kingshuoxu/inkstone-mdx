@@ -6,7 +6,7 @@ Choose **Help → Check for updates** (帮助 → 检查更新) in the desktop a
 
 A newer stable release offers the platform's installer. Confirm **Download installer**, choose a destination, and wait for **Installer downloaded and checksum verified**. The Help menu offers cancellation while checking or downloading. On failure/cancellation the partial file is removed and an existing destination is preserved. A successful download replaces the chosen destination only after integrity verification. No installer is executed, and the application does not close or discard your work. Save your work and install manually. Linux AppImage downloads require executable permission before launching; a Debian package can instead be obtained from the Releases page.
 
-Published v0.1.0 has no update-check UI. Install v0.2.0 manually once to gain this feature. Existing v0.1.0 assets remain unchanged.
+Published v0.1.0 has no update-check UI. Install the [latest stable release](https://github.com/kingshuoxu/inkstone-mdx/releases/latest) manually once to gain this feature. Existing v0.1.0 assets remain unchanged.
 
 ## Safety and limits
 

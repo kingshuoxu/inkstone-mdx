@@ -15,7 +15,7 @@ npm ci --prefix examples/project --ignore-scripts
 npm run desktop
 ```
 
-`npm run desktop:dist` builds the current operating system's installer in `release/`: Linux AppImage and deb, Windows NSIS exe, macOS dmg and zip. The Desktop GitHub Actions workflow builds each on its own OS and uploads artifacts. Builds are unsigned and macOS builds are not notarized. OS security prompts are expected; no claim of signed distribution is made. CI artifacts require GitHub access and expire; there is no auto-updater or release publishing.
+`npm run desktop:dist` builds the current operating system's installer in `release/`: Linux AppImage and deb, Windows NSIS exe, macOS dmg and zip. The Desktop GitHub Actions workflow builds each on its own OS and uploads artifacts. Builds are unsigned and macOS builds are not notarized. OS security prompts are expected; no claim of signed distribution is made. CI artifacts require GitHub access and expire. Download stable installers from [GitHub Releases](https://github.com/kingshuoxu/inkstone-mdx/releases/latest). Desktop versions supporting [update checks](UPDATES.md) can download a verified installer from Help → Check for updates; installation remains manual.
 
 ## Chinese display fonts
 

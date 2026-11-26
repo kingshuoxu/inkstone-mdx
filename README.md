@@ -6,7 +6,7 @@
 
 [English](README.en.md) · [MIT License](LICENSE) · [桌面版指南](docs/DESKTOP.md) · [测试与限制](docs/EXTENDED-VALIDATION.md)
 
-> **v0.2.0 已发布**：[下载正式版本](https://github.com/kingshuoxu/inkstone-mdx/releases/tag/v0.2.0)，包含完整大文件预览、手动检查更新和仓库反馈入口。桌面安装包未签名，macOS 未公证。请只运行可信的 MDX 文档与项目。
+> [下载最新正式版本](https://github.com/kingshuoxu/inkstone-mdx/releases/latest)。桌面安装包未签名，macOS 未公证。请只运行可信的 MDX 文档与项目。
 
 ## 页面预览
 
@@ -62,7 +62,7 @@
 
 ### 下载桌面版
 
-在 [v0.2.0 Release](https://github.com/kingshuoxu/inkstone-mdx/releases/tag/v0.2.0) 的 **Assets** 下载对应平台安装包；同页提供 `SHA256SUMS.txt` 和 `BUILD-MANIFEST.json` 供校验。桌面版支持手动检查更新和下载安装包，安装仍需手动完成。
+在 [最新正式版本](https://github.com/kingshuoxu/inkstone-mdx/releases/latest) 的 **Assets** 下载对应平台安装包；同页提供 `SHA256SUMS.txt` 和 `BUILD-MANIFEST.json` 供校验。桌面版支持手动检查更新和下载安装包，安装仍需手动完成。
 
 - macOS：Apple Silicon（arm64）/ Intel（x64），DMG / ZIP
 - Windows：x64，NSIS 安装程序（EXE）
@@ -127,4 +127,4 @@ npm run format:check
 
 ### 检查桌面更新
 
-桌面菜单“帮助 → 检查更新”可从本仓库 GitHub Release 检查正式版本；确认后下载对应平台安装包并校验 SHA-256。应用不会自动安装或退出，也不会后台检查。请保存工作后手动安装。详情见[更新说明](docs/UPDATES.md)。已发布的 v0.1.0 不含此功能，需要先手动安装 v0.2.0。
+桌面菜单“帮助 → 检查更新”可从本仓库 GitHub Release 检查正式版本；确认后下载对应平台安装包并校验 SHA-256。应用不会自动安装或退出，也不会后台检查。请保存工作后手动安装。详情见[更新说明](docs/UPDATES.md)。已发布的 v0.1.0 不含此功能，需要先手动安装当前的正式版本。
